@@ -1,0 +1,29 @@
+{
+  "name": "neon-snake-3d",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Futuristic 3D Cyber Arcade Snake Game built with Three.js and WebGL",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.12"
+  },
+  "keywords": [
+    "snake",
+    "3d",
+    "threejs",
+    "webgl",
+    "cyberpunk",
+    "arcade",
+    "neon"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
