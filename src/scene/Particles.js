@@ -343,6 +343,19 @@ export class ParticleSystem {
       }
     }
 
+  spawnStormMotes(count = 4) {
+    const rainbowColors = [0xff0055, 0xff7700, 0xffea00, 0x00ff88, 0x00e5ff, 0x9d00ff];
+    for (let i = 0; i < count; i++) {
+      const pos = {
+        x: (Math.random() - 0.5) * 19,
+        y: Math.random() * 2.2 + 0.3,
+        z: (Math.random() - 0.5) * 19
+      };
+      const col = rainbowColors[Math.floor(Math.random() * rainbowColors.length)];
+      this.spawnTrailMote(pos, col);
+    }
+  }
+
     // 4. Update snake trail
     const tPos = this.trailPoints.geometry.attributes.position.array;
     const tCol = this.trailPoints.geometry.attributes.color.array;

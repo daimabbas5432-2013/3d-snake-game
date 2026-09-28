@@ -5,6 +5,32 @@
 import { GAME_STATES, DIRECTIONS } from './game/Constants.js';
 
 export async function runE2ETests() {
+  const origLog = console.log;
+  const origErr = console.error;
+  let resDiv = document.getElementById('test-results');
+  if (!resDiv) {
+    resDiv = document.createElement('div');
+    resDiv.id = 'test-results';
+    resDiv.style.cssText = 'position:fixed;bottom:0;left:0;max-height:200px;overflow:auto;background:rgba(0,0,0,0.9);color:#0f0;font-family:monospace;font-size:11px;z-index:99999;padding:10px;';
+    document.body.appendChild(resDiv);
+  }
+
+  const appendDOM = (text, isErr) => {
+    const p = document.createElement('div');
+    p.className = isErr ? 'test-log-err' : 'test-log-ok';
+    p.textContent = text;
+    if (isErr) p.style.color = '#ff3366';
+    resDiv.appendChild(p);
+  };
+  console.log = (...args) => {
+    origLog.apply(console, args);
+    appendDOM(args.join(' '), false);
+  };
+  console.error = (...args) => {
+    origErr.apply(console, args);
+    appendDOM(args.join(' '), true);
+  };
+
   console.log('--- STARTING NEON VIPER 3D E2E TESTS ---');
 
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -130,13 +156,23 @@ export async function runE2ETests() {
   game.handleFoodCollected();
   console.log('TEST_PASS: Golden Orb collected');
 
-  game.food.currentType = { type: 'SPEED', name: 'Turbo Surge', points: 20, color: 0xff9900, secondaryColor: 0xff3300, ringColor: 0xffcc00, probability: 0.09, duration: 6 };
+  game.food.currentType = { type: 'SPEED', name: 'Turbo Boost', shortName: 'TURBO', icon: '⚡', points: 20, color: 0xffffff, secondaryColor: 0xffea00, ringColor: 0xff007f, probability: 0.09, duration: 6 };
   game.handleFoodCollected();
   if (!game.activePowerup || game.activePowerup.type !== 'SPEED') {
     console.error('TEST_FAIL: Turbo powerup not active');
     return false;
   }
-  console.log('TEST_PASS: Turbo Surge powerup activated');
+  const abilityToast = document.getElementById('ability-toast');
+  const abilityHud = document.getElementById('active-ability-hud');
+  if (!abilityToast || !abilityToast.classList.contains('active')) {
+    console.error('TEST_FAIL: Ability toast notification not active');
+    return false;
+  }
+  if (!abilityHud || !abilityHud.classList.contains('active')) {
+    console.error('TEST_FAIL: Active ability HUD panel not active');
+    return false;
+  }
+  console.log('TEST_PASS: Turbo Boost powerup activated with compact toast & active HUD panel');
 
   // 10. Test Milestone WOW Moment Trigger
   console.log('ACTION: Testing milestone moment trigger');
@@ -176,13 +212,153 @@ export async function runE2ETests() {
   }
   console.log('TEST_PASS: Retry restarted game into PLAYING state');
 
+  // 13. Test Mode Switching & Cleanup (Return to Menu)
+  console.log('ACTION: Testing Mode Selection & Cleanup');
+  game.initMenuState();
+  await wait(200);
+
+  if (game.portalManager !== null || game.enemyManager !== null) {
+    console.error('TEST_FAIL: Mode entities not cleaned up on return to menu');
+    return false;
+  }
+  console.log('TEST_PASS: Mode entities cleanly disposed on return to menu');
+
+  // Test Mode 2: Portal Mode selection
+  const cardPortal = document.getElementById('mode-card-portal');
+  if (!cardPortal) {
+    console.error('TEST_FAIL: #mode-card-portal not found in DOM');
+    return false;
+  }
+  cardPortal.click();
+  await wait(100);
+
+  if (game.currentMode !== 'PORTAL' || !cardPortal.classList.contains('active')) {
+    console.error(`TEST_FAIL: Portal Mode not selected. currentMode=${game.currentMode}`);
+    return false;
+  }
+  console.log('TEST_PASS: Portal mode card clicked and selected');
+
+  // Start in Portal Mode
+  startBtn.click();
+  await wait(300);
+
+  if (!game.portalManager || !game.portalManager.portalA || !game.portalManager.portalB) {
+    console.error('TEST_FAIL: PortalManager or portals not spawned in PORTAL mode');
+    return false;
+  }
+  console.log(`TEST_PASS: Dual portals active at Alpha(${game.portalManager.portalA.gridPosition.x},${game.portalManager.portalA.gridPosition.z}) and Omega(${game.portalManager.portalB.gridPosition.x},${game.portalManager.portalB.gridPosition.z})`);
+
+  // Test Portal Teleportation
+  const pA = game.portalManager.portalA.gridPosition;
+  const pB = game.portalManager.portalB.gridPosition;
+  game.snake.body[0].x = pA.x;
+  game.snake.body[0].z = pA.z;
+  const teleResult = game.portalManager.checkTeleport(game.snake);
+  if (!teleResult) {
+    console.error('TEST_FAIL: Snake head on portal A did not trigger teleport');
+    return false;
+  }
+  const newHead = game.snake.body[0];
+  const distToOmega = Math.abs(newHead.x - pB.x) + Math.abs(newHead.z - pB.z);
+  if (distToOmega > 2) {
+    console.error(`TEST_FAIL: Teleported head too far from portal B: (${newHead.x},${newHead.z})`);
+    return false;
+  }
+  console.log(`TEST_PASS: Teleported smoothly through portal to safe exit at (${newHead.x},${newHead.z})`);
+
+  // Test Mode 3: Enemy Bots Selection & Cleanup
+  console.log('ACTION: Testing Enemy Bots mode selection and cleanup');
+  game.initMenuState();
+  const cardBots = document.getElementById('mode-card-bots');
+  cardBots.click();
+  await wait(100);
+
+  if (game.currentMode !== 'ENEMY_BOTS' || !cardBots.classList.contains('active')) {
+    console.error(`TEST_FAIL: Enemy Bots not selected. currentMode=${game.currentMode}`);
+    return false;
+  }
+  if (game.portalManager !== null) {
+    console.error('TEST_FAIL: Portals were not cleaned up when selecting Enemy Bots');
+    return false;
+  }
+
+  startBtn.click();
+  await wait(300);
+
+  if (!game.enemyManager || game.enemyManager.getBotCount() < 1) {
+    console.error('TEST_FAIL: EnemyManager or bots not active in ENEMY_BOTS mode');
+    return false;
+  }
+  console.log(`TEST_PASS: Enemy Bots mode initialized with ${game.enemyManager.getBotCount()} active AI drone`);
+
+  // Test Mode 1: Rainbow Storm Selection & Periodic Trigger
+  console.log('ACTION: Testing Rainbow Storm mode & event trigger');
+  game.initMenuState();
+  const cardRainbow = document.getElementById('mode-card-rainbow');
+  cardRainbow.click();
+  await wait(100);
+
+  if (game.currentMode !== 'RAINBOW_STORM') {
+    console.error(`TEST_FAIL: Rainbow Storm not selected. currentMode=${game.currentMode}`);
+    return false;
+  }
+  startBtn.click();
+  await wait(300);
+
+  // Trigger storm event
+  game.stormCountdown = 0.001;
+  game.update();
+  if (!game.stormActive) {
+    console.error('TEST_FAIL: Rainbow Storm event was not triggered');
+    return false;
+  }
+  const hudEvent = document.getElementById('hud-mode-event');
+  if (!hudEvent || !hudEvent.classList.contains('active')) {
+    console.error('TEST_FAIL: HUD Rainbow Storm event banner not active');
+    return false;
+  }
+  console.log('TEST_PASS: Rainbow Storm event triggered with active HUD event indicator and motes');
+
+  // 14. Test Mode-Specific High Scores in localStorage
+  console.log('ACTION: Testing Mode-Specific High Scores in localStorage');
+  game.score.setMode('RAINBOW_STORM');
+  game.score.saveHighScore(1240);
+  game.score.setMode('PORTAL');
+  game.score.saveHighScore(890);
+  game.score.setMode('ENEMY_BOTS');
+  game.score.saveHighScore(1560);
+
+  const scores = game.score.getAllHighScores();
+  if (scores.RAINBOW_STORM !== 1240 || scores.PORTAL !== 890 || scores.ENEMY_BOTS !== 1560) {
+    console.error(`TEST_FAIL: High scores corrupted or overwritten: ${JSON.stringify(scores)}`);
+    return false;
+  }
+  console.log(`TEST_PASS: Mode-specific high scores verified: Rainbow=${scores.RAINBOW_STORM}, Portal=${scores.PORTAL}, Bots=${scores.ENEMY_BOTS}`);
+
+  // 15. Verify Food High-Contrast White Core
+  if (game.food.coreMat.color.getHex() !== 0xffffff) {
+    console.error('TEST_FAIL: Food inner core is not high-contrast pure white');
+    return false;
+  }
+  console.log('TEST_PASS: Food core confirmed pure white (0xffffff) with rotating energy rings');
+
   console.log('=== E2E_ALL_TESTS_PASSED ===');
   return true;
 }
 
 // Auto-run if ?test=true is in URL
 if (window.location.search.includes('test=true')) {
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(runE2ETests, 800);
-  });
+  const scheduleRun = () => {
+    setTimeout(() => {
+      runE2ETests().catch(err => {
+        console.error('TEST_EXCEPTION: ' + (err.stack || err.message || err));
+      });
+    }, 400);
+  };
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', scheduleRun);
+  } else {
+    scheduleRun();
+  }
 }

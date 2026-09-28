@@ -86,7 +86,7 @@ export class Arena {
   }
 
   initGridFloor() {
-    const canvasSize = 1024;
+    const canvasSize = 512;
     this.gridCanvas = document.createElement('canvas');
     this.gridCanvas.width = canvasSize;
     this.gridCanvas.height = canvasSize;
@@ -95,12 +95,15 @@ export class Arena {
     this.gridTexture = new THREE.CanvasTexture(this.gridCanvas);
     this.gridTexture.wrapS = THREE.ClampToEdgeWrapping;
     this.gridTexture.wrapT = THREE.ClampToEdgeWrapping;
+    this.gridTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    this.gridTexture.magFilter = THREE.LinearFilter;
+    this.gridTexture.generateMipmaps = true;
 
     const floorGeo = new THREE.PlaneGeometry(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
     this.floorMat = new THREE.MeshStandardMaterial({
       map: this.gridTexture,
-      roughness: 0.16,
-      metalness: 0.85,
+      roughness: 0.28,
+      metalness: 0.45,
       transparent: false
     });
 
@@ -132,9 +135,9 @@ export class Arena {
   }
 
   /**
-   * Living Animated Rainbow Floor
-   * Smooth, flowing color transitions without harsh stripes or distracting lines
-   * Center area maintains deep contrast so the snake and food POP brilliantly!
+   * Constantly Changing Dark, Elegant Living RGB Rainbow Floor
+   * Smoothly cycles through Red -> Orange -> Yellow -> Green -> Cyan -> Blue -> Purple -> Pink -> Red
+   * Dark luxury base + soft RGB ambient glow. Controlled brightness, never blinding or washed out.
    */
   drawLivingRainbow(time) {
     const ctx = this.gridCtx;
@@ -145,82 +148,90 @@ export class Arena {
     const cells = GRID_SIZE;
     const step = w / cells;
 
-    // 1. Base Dark Cyber Canvas
-    ctx.fillStyle = '#060916';
+    // 1. Deep Obsidian Cyber Base
+    ctx.fillStyle = '#060914';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Flowing Living Rainbow Radial & Angular Energy Field
-    // Cycle smoothly through HSL spectrum: Cyan -> Blue -> Purple -> Pink -> Magenta -> Red -> Orange -> Yellow -> Green -> Cyan
-    const baseHue = (time * 18) % 360;
+    // Smooth, majestic HSL rainbow cycle: Red (0) -> Orange (30) -> Yellow (60) -> Green (120) -> Cyan (180) -> Blue (240) -> Purple (280) -> Pink (320) -> Red (360)
+    const baseHue = (time * 16) % 360;
 
-    // Multi-ring flowing rainbow ripples
-    const maxRadius = Math.sqrt(cx * cx + cy * cy);
-    const ringCount = 5;
+    // 2. Soft, controlled flowing multi-directional linear rainbow glow
+    const angle = time * 0.22;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const reach = w * 0.70;
+    const x0 = cx - cosA * reach;
+    const y0 = cy - sinA * reach;
+    const x1 = cx + cosA * reach;
+    const y1 = cy + sinA * reach;
 
-    for (let r = ringCount; r >= 1; r--) {
-      const radius = (r / ringCount) * maxRadius;
-      const ringHue = (baseHue + r * 45) % 360;
+    const flowGrad = ctx.createLinearGradient(x0, y0, x1, y1);
+    flowGrad.addColorStop(0.00, `hsla(${baseHue}, 65%, 12%, 0.65)`);
+    flowGrad.addColorStop(0.25, `hsla(${(baseHue + 45) % 360}, 68%, 14%, 0.70)`);
+    flowGrad.addColorStop(0.50, `hsla(${(baseHue + 90) % 360}, 65%, 13%, 0.68)`);
+    flowGrad.addColorStop(0.75, `hsla(${(baseHue + 140) % 360}, 68%, 14%, 0.70)`);
+    flowGrad.addColorStop(1.00, `hsla(${(baseHue + 200) % 360}, 65%, 12%, 0.65)`);
 
-      const radGrad = ctx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, radius);
-      radGrad.addColorStop(0, `hsla(${ringHue}, 85%, 16%, 0.10)`);
-      radGrad.addColorStop(0.7, `hsla(${(ringHue + 30) % 360}, 90%, 26%, 0.25)`);
-      radGrad.addColorStop(1.0, `hsla(${(ringHue + 60) % 360}, 95%, 45%, 0.05)`);
+    ctx.fillStyle = flowGrad;
+    ctx.fillRect(0, 0, w, h);
 
-      ctx.fillStyle = radGrad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // 3. Gentle sweeping secondary organic radial glow
+    const b1X = cx + Math.sin(time * 0.35) * (w * 0.25);
+    const b1Y = cy + Math.cos(time * 0.30) * (h * 0.25);
+    const g1 = ctx.createRadialGradient(b1X, b1Y, 20, b1X, b1Y, w * 0.50);
+    g1.addColorStop(0.0, `hsla(${(baseHue + 60) % 360}, 72%, 18%, 0.28)`);
+    g1.addColorStop(0.65, `hsla(${(baseHue + 120) % 360}, 68%, 14%, 0.12)`);
+    g1.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, w, h);
 
-    // 3. Clear Center Playfield Zone for 100% Snake Visibility
-    const centerGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, w * 0.38);
-    centerGrad.addColorStop(0, 'rgba(4, 7, 18, 0.88)');
-    centerGrad.addColorStop(0.65, 'rgba(8, 14, 32, 0.65)');
-    centerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = centerGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, w * 0.38, 0, Math.PI * 2);
-    ctx.fill();
+    // 4. Counter-flowing complementary wave
+    const b2X = cx - Math.sin(time * 0.30) * (w * 0.24);
+    const b2Y = cy - Math.cos(time * 0.40) * (h * 0.24);
+    const g2 = ctx.createRadialGradient(b2X, b2Y, 15, b2X, b2Y, w * 0.52);
+    g2.addColorStop(0.0, `hsla(${(baseHue + 210) % 360}, 70%, 17%, 0.24)`);
+    g2.addColorStop(0.65, `hsla(${(baseHue + 270) % 360}, 65%, 13%, 0.10)`);
+    g2.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, w, h);
 
-    // 4. Subtle, Clean Minimal Grid Lines (NO harsh stripes!)
+    // 5. Subtle, elegant spatial grid lines (Tactical, non-distracting, ultra-clean)
     ctx.lineWidth = 1.0;
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.20)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
 
     for (let i = 0; i <= cells; i++) {
-      const pos = i * step;
+      const pos = Math.round(i * step);
       ctx.beginPath();
-      ctx.moveTo(pos, 0);
-      ctx.lineTo(pos, h);
+      ctx.moveTo(pos + 0.5, 0);
+      ctx.lineTo(pos + 0.5, h);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(0, pos);
-      ctx.lineTo(w, pos);
+      ctx.moveTo(0, pos + 0.5);
+      ctx.lineTo(w, pos + 0.5);
       ctx.stroke();
     }
 
-    // 5. Subtle Intersection Dots (Clean spatial references)
+    // 6. Subtle intersection micro-dots
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
     for (let i = 0; i <= cells; i++) {
       for (let j = 0; j <= cells; j++) {
         const px = i * step;
         const py = j * step;
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
-        ctx.beginPath();
-        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(px - 1, py - 1, 2, 2);
       }
     }
 
-    // 6. Glowing Rainbow Edge Aura
-    const borderHue = (baseHue + 120) % 360;
+    // 7. Controlled Slim Neon Edge Border Bezel
     const borderGrad = ctx.createLinearGradient(0, 0, w, h);
-    borderGrad.addColorStop(0, `hsla(${baseHue}, 100%, 55%, 0.85)`);
-    borderGrad.addColorStop(0.5, `hsla(${(baseHue + 90) % 360}, 100%, 60%, 0.85)`);
-    borderGrad.addColorStop(1, `hsla(${borderHue}, 100%, 55%, 0.85)`);
+    borderGrad.addColorStop(0.0, `hsla(${baseHue}, 85%, 52%, 0.75)`);
+    borderGrad.addColorStop(0.33, `hsla(${(baseHue + 60) % 360}, 85%, 52%, 0.75)`);
+    borderGrad.addColorStop(0.66, `hsla(${(baseHue + 120) % 360}, 85%, 52%, 0.75)`);
+    borderGrad.addColorStop(1.0, `hsla(${(baseHue + 180) % 360}, 85%, 52%, 0.75)`);
 
-    ctx.lineWidth = 7;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = borderGrad;
-    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.strokeRect(2, 2, w - 4, h - 4);
 
     this.gridTexture.needsUpdate = true;
   }
@@ -448,12 +459,18 @@ export class Arena {
   }
 
   update(time, deltaTime) {
-    // Redraw smooth living rainbow floor at 30 FPS
+    // Redraw smooth living rainbow floor at 60 FPS
     this.pulseTime += deltaTime;
-    const updateRate = this.isOverdrive ? 0.025 : 0.033;
-    if (this.pulseTime > updateRate) {
-      this.drawLivingRainbow(time * (this.isOverdrive ? 1.6 : 1.0));
+    const updateRate = 0.016;
+    if (this.pulseTime >= updateRate) {
+      this.drawLivingRainbow(time * (this.isOverdrive ? 1.4 : 1.0));
       this.pulseTime = 0;
+    }
+
+    // Sync platform rim glow to current rainbow cycle
+    if (this.rimMat) {
+      const rimHue = (time * 26 + 120) % 360;
+      this.rimMat.emissive.setHSL(rimHue / 360, 1.0, 0.55);
     }
 
     // Animate floor shockwaves

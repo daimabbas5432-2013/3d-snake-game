@@ -13,6 +13,7 @@ export class UIManager {
     this.onMenu = options.onMenu || (() => {});
     this.onMuteToggle = options.onMuteToggle || (() => {});
     this.onDirectionInput = options.onDirectionInput || (() => {});
+    this.onSelectMode = options.onSelectMode || (() => {});
 
     this.cacheDom();
     this.bindEvents();
@@ -25,12 +26,32 @@ export class UIManager {
     this.hudLength = document.getElementById('hud-length');
     this.hudSpeed = document.getElementById('hud-speed');
     this.hudPhase = document.getElementById('hud-phase');
+    this.hudModeName = document.getElementById('hud-mode-name');
+    this.hudModeBadge = document.getElementById('hud-mode-badge');
+    this.hudModeEvent = document.getElementById('hud-mode-event');
+    this.hudEventIcon = document.getElementById('hud-event-icon');
+    this.hudEventText = document.getElementById('hud-event-text');
+    this.hudEventTimer = document.getElementById('hud-event-timer');
     this.hudComboContainer = document.getElementById('hud-combo-container');
     this.hudComboVal = document.getElementById('hud-combo-val');
     this.hudComboBar = document.getElementById('hud-combo-bar');
     this.powerupBanner = document.getElementById('powerup-banner');
     this.powerupName = document.getElementById('powerup-name');
     this.powerupTimer = document.getElementById('powerup-timer');
+
+    // Ability Notification Toast (<12% screen, top/upper-right)
+    this.abilityToast = document.getElementById('ability-toast');
+    this.abilityToastIcon = document.getElementById('ability-toast-icon');
+    this.abilityToastTitle = document.getElementById('ability-toast-title');
+    this.abilityToastTime = document.getElementById('ability-toast-time');
+    this.toastTimer = null;
+
+    // Small Permanent Active Ability HUD
+    this.abilityHud = document.getElementById('active-ability-hud');
+    this.abilityHudIcon = document.getElementById('ability-hud-icon');
+    this.abilityHudName = document.getElementById('ability-hud-name');
+    this.abilityHudTimer = document.getElementById('ability-hud-timer');
+    this.abilityHudBar = document.getElementById('ability-hud-bar');
 
     this.btnMute = document.getElementById('btn-mute');
     this.btnPause = document.getElementById('btn-pause');
@@ -40,9 +61,13 @@ export class UIManager {
     this.modalPause = document.getElementById('modal-pause');
     this.modalGameOver = document.getElementById('modal-gameover');
 
-    // Menu Elements
+    // Menu Elements & Mode Cards
     this.menuHighScore = document.getElementById('menu-high-score');
     this.btnStart = document.getElementById('btn-start');
+    this.modeCards = document.querySelectorAll('.mode-card');
+    this.menuHighRainbow = document.getElementById('menu-high-rainbow');
+    this.menuHighPortal = document.getElementById('menu-high-portal');
+    this.menuHighBots = document.getElementById('menu-high-bots');
 
     // Pause Elements
     this.btnResume = document.getElementById('btn-resume');
@@ -55,6 +80,7 @@ export class UIManager {
     this.goLength = document.getElementById('go-length');
     this.goFoods = document.getElementById('go-foods');
     this.goRecordBadge = document.getElementById('go-record-badge');
+    this.goModeBadge = document.getElementById('go-mode-badge');
     this.btnReplay = document.getElementById('btn-replay');
     this.btnGoMenu = document.getElementById('btn-go-menu');
 
@@ -81,6 +107,25 @@ export class UIManager {
       playClk();
       this.onStart();
     });
+
+    // Mode Selection Cards
+    if (this.modeCards) {
+      this.modeCards.forEach(card => {
+        const handleSelect = (e) => {
+          e.preventDefault();
+          playClk();
+          const mode = card.dataset.mode;
+          if (mode) this.onSelectMode(mode);
+        };
+        card.addEventListener('click', handleSelect);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleSelect(e);
+          }
+        });
+        card.addEventListener('mouseenter', playHov);
+      });
+    }
 
     // Mute Button
     this.btnMute.addEventListener('click', () => {
@@ -150,6 +195,42 @@ export class UIManager {
     }
   }
 
+  updateModeSelection(activeModeKey, allHighScores = {}) {
+    if (this.modeCards) {
+      this.modeCards.forEach(card => {
+        const isMatch = card.dataset.mode === activeModeKey;
+        if (isMatch) {
+          card.classList.add('active');
+          const tag = card.querySelector('.mode-card-active-tag');
+          if (tag) tag.textContent = 'SELECTED';
+        } else {
+          card.classList.remove('active');
+          const tag = card.querySelector('.mode-card-active-tag');
+          if (tag) tag.textContent = 'SELECT';
+        }
+      });
+    }
+
+    if (this.menuHighRainbow && allHighScores.RAINBOW_STORM !== undefined) {
+      this.menuHighRainbow.textContent = allHighScores.RAINBOW_STORM.toString().padStart(6, '0');
+    }
+    if (this.menuHighPortal && allHighScores.PORTAL !== undefined) {
+      this.menuHighPortal.textContent = allHighScores.PORTAL.toString().padStart(6, '0');
+    }
+    if (this.menuHighBots && allHighScores.ENEMY_BOTS !== undefined) {
+      this.menuHighBots.textContent = allHighScores.ENEMY_BOTS.toString().padStart(6, '0');
+    }
+
+    if (this.hudModeName) {
+      const modeNames = {
+        RAINBOW_STORM: 'RAINBOW STORM',
+        PORTAL: 'PORTAL MODE',
+        ENEMY_BOTS: 'ENEMY BOTS'
+      };
+      this.hudModeName.textContent = modeNames[activeModeKey] || activeModeKey;
+    }
+  }
+
   showState(state, data = {}) {
     this.modalMenu.classList.remove('active');
     this.modalPause.classList.remove('active');
@@ -158,8 +239,11 @@ export class UIManager {
     switch (state) {
       case GAME_STATES.MENU:
         this.modalMenu.classList.add('active');
-        if (data.highScore !== undefined) {
+        if (data.highScore !== undefined && this.menuHighScore) {
           this.menuHighScore.textContent = data.highScore.toString().padStart(6, '0');
+        }
+        if (data.activeMode) {
+          this.updateModeSelection(data.activeMode, data.allHighScores || {});
         }
         break;
 
@@ -173,6 +257,11 @@ export class UIManager {
         this.goHighScore.textContent = data.highScore !== undefined ? data.highScore.toString().padStart(6, '0') : '000000';
         this.goLength.textContent = data.length || 3;
         this.goFoods.textContent = data.foodsCollected || 0;
+
+        if (this.goModeBadge) {
+          const modeTitle = data.modeName || 'STANDARD';
+          this.goModeBadge.textContent = `MODE: ${modeTitle.toUpperCase()}`;
+        }
 
         if (data.isNewHighScore) {
           this.goRecordBadge.style.display = 'block';
@@ -196,7 +285,7 @@ export class UIManager {
     }
   }
 
-  updateHUD(scoreObj, activePowerup) {
+  updateHUD(scoreObj, activePowerup, modeEventData = null) {
     this.hudScore.textContent = scoreObj.getFormattedScore();
     this.hudHighScore.textContent = scoreObj.getFormattedHighScore();
     this.hudLength.textContent = scoreObj.length.toString().padStart(2, '0');
@@ -210,6 +299,32 @@ export class UIManager {
       this.hudPhase.style.color = curPhase.color;
     }
 
+    if (this.hudModeName && scoreObj.modeName) {
+      this.hudModeName.textContent = scoreObj.modeName.toUpperCase();
+    }
+
+    // Mode Event Indicator (e.g. Rainbow Storm or Portals Active)
+    if (this.hudModeEvent) {
+      if (modeEventData && modeEventData.active) {
+        this.hudModeEvent.classList.add('active');
+        if (this.hudEventIcon && modeEventData.icon) this.hudEventIcon.textContent = modeEventData.icon;
+        if (this.hudEventText && modeEventData.text) this.hudEventText.textContent = modeEventData.text;
+        if (this.hudEventTimer) {
+          if (typeof modeEventData.timer === 'number') {
+            this.hudEventTimer.textContent = `${Math.max(0, modeEventData.timer).toFixed(1)}s`;
+            this.hudEventTimer.style.display = 'inline-block';
+          } else if (modeEventData.timer) {
+            this.hudEventTimer.textContent = modeEventData.timer;
+            this.hudEventTimer.style.display = 'inline-block';
+          } else {
+            this.hudEventTimer.style.display = 'none';
+          }
+        }
+      } else {
+        this.hudModeEvent.classList.remove('active');
+      }
+    }
+
     // Combo meter with dynamic shoutouts
     if (scoreObj.combo > 1 && scoreObj.comboTimer > 0) {
       this.hudComboContainer.classList.add('active');
@@ -220,14 +335,55 @@ export class UIManager {
       this.hudComboContainer.classList.remove('active');
     }
 
-    // Active powerup
-    if (activePowerup && activePowerup.timer > 0) {
-      this.powerupBanner.className = `glass-panel active ${activePowerup.type.toLowerCase()}`;
-      this.powerupName.textContent = activePowerup.name;
-      this.powerupTimer.textContent = `${activePowerup.timer.toFixed(1)}s`;
-    } else {
-      this.powerupBanner.className = 'glass-panel';
+    // Active Ability HUD indicator (Compact, permanent countdown and meter)
+    if (this.abilityHud) {
+      if (activePowerup && activePowerup.timer > 0) {
+        const typeCls = (activePowerup.type || 'speed').toLowerCase();
+        this.abilityHud.className = `glass-panel ability-hud-card active ${typeCls}`;
+        if (this.abilityHudIcon) this.abilityHudIcon.textContent = activePowerup.icon || '⚡';
+        if (this.abilityHudName) this.abilityHudName.textContent = activePowerup.shortName || activePowerup.name;
+        if (this.abilityHudTimer) this.abilityHudTimer.textContent = `${Math.max(0, activePowerup.timer).toFixed(1)}s`;
+        if (this.abilityHudBar) {
+          const maxDur = activePowerup.maxDuration || 6.0;
+          const pct = Math.max(0, Math.min(100, (activePowerup.timer / maxDur) * 100));
+          this.abilityHudBar.style.width = `${pct}%`;
+        }
+      } else {
+        this.abilityHud.className = 'glass-panel ability-hud-card';
+      }
     }
+
+    // Active powerup legacy sync
+    if (this.powerupBanner) {
+      if (activePowerup && activePowerup.timer > 0) {
+        this.powerupBanner.className = `glass-panel active ${activePowerup.type.toLowerCase()}`;
+        if (this.powerupName) this.powerupName.textContent = activePowerup.name;
+        if (this.powerupTimer) this.powerupTimer.textContent = `${activePowerup.timer.toFixed(1)}s`;
+      } else {
+        this.powerupBanner.className = 'glass-panel';
+      }
+    }
+  }
+
+  showAbilityToast(powerup) {
+    if (!this.abilityToast) return;
+    const icon = powerup.icon || '⚡';
+    const name = powerup.shortName || powerup.name.toUpperCase();
+    const duration = powerup.maxDuration || powerup.duration || powerup.timer || 6.0;
+    const typeCls = (powerup.type || 'speed').toLowerCase();
+
+    if (this.abilityToastIcon) this.abilityToastIcon.textContent = icon;
+    if (this.abilityToastTitle) this.abilityToastTitle.textContent = `${icon} ${name} ACTIVATED`;
+    if (this.abilityToastTime) this.abilityToastTime.textContent = `${duration.toFixed(1)}s`;
+
+    this.abilityToast.className = `glass-panel ability-toast active ${typeCls}`;
+
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => {
+      if (this.abilityToast) {
+        this.abilityToast.classList.remove('active');
+      }
+    }, 2400);
   }
 
   showMilestoneBanner(milestone) {
@@ -242,7 +398,7 @@ export class UIManager {
 
     setTimeout(() => {
       if (banner) banner.classList.remove('active');
-    }, 2200);
+    }, 2000);
   }
 
   showFloatingScore(points, combo, screenPos) {

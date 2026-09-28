@@ -14,6 +14,39 @@ export const GAME_STATES = {
   GAME_OVER: 'GAME_OVER'
 };
 
+export const GAME_MODES = {
+  RAINBOW_STORM: {
+    id: 'RAINBOW_STORM',
+    name: 'RAINBOW STORM',
+    icon: '🌈',
+    tagline: 'Survive the storm. Chase rare Rainbow Orbs.',
+    badge: 'EVENT MODE',
+    color: '#ff00aa',
+    accentColor: 0xff00aa,
+    storageKey: 'neon_snake_high_RAINBOW_STORM'
+  },
+  PORTAL: {
+    id: 'PORTAL',
+    name: 'PORTAL MODE',
+    icon: '🌀',
+    tagline: 'Teleport through the arena and master the portals.',
+    badge: 'WARP TECH',
+    color: '#00e5ff',
+    accentColor: 0x00e5ff,
+    storageKey: 'neon_snake_high_PORTAL'
+  },
+  ENEMY_BOTS: {
+    id: 'ENEMY_BOTS',
+    name: 'ENEMY BOTS',
+    icon: '👾',
+    tagline: 'Survive against intelligent arena enemies.',
+    badge: 'SURVIVAL',
+    color: '#ff3344',
+    accentColor: 0xff3344,
+    storageKey: 'neon_snake_high_ENEMY_BOTS'
+  }
+};
+
 export const DIRECTIONS = {
   UP: { x: 0, z: -1, name: 'UP', angle: 0 },
   DOWN: { x: 0, z: 1, name: 'DOWN', angle: Math.PI },
@@ -31,11 +64,11 @@ export const SPEED_CONFIG = {
 export const FOOD_TYPES = {
   NORMAL: {
     type: 'NORMAL',
-    name: 'Plasma Orb',
+    name: 'Solar Plasma Core',
     points: 10,
-    color: 0x00f0ff,
-    secondaryColor: 0x0088ff,
-    ringColor: 0x00ffff,
+    color: 0xffffff, // Radiant white core
+    secondaryColor: 0xffea00, // Golden yellow outer glow
+    ringColor: 0xff00aa, // Vibrant pink/purple energy ring
     probability: 0.50,
     duration: 0
   },
@@ -43,59 +76,69 @@ export const FOOD_TYPES = {
     type: 'GOLDEN',
     name: 'Solar Gold Core',
     points: 50,
-    color: 0xffea00,
-    secondaryColor: 0xff7700,
-    ringColor: 0xffd700,
+    color: 0xffffff,
+    secondaryColor: 0xffea00,
+    ringColor: 0xff0088,
     probability: 0.15,
     duration: 0
   },
   RAINBOW: {
     type: 'RAINBOW',
-    name: 'Rainbow Prism',
+    name: 'Rainbow Overdrive',
+    shortName: 'RAINBOW',
+    icon: '🌈',
     points: 100,
-    color: 0xff00cc,
-    secondaryColor: 0x00f0ff,
+    color: 0xffffff,
+    secondaryColor: 0xff00cc,
     ringColor: 0xffea00,
     probability: 0.08,
     duration: 8 // Activates Rainbow Overdrive mode
   },
   SPEED: {
     type: 'SPEED',
-    name: 'Turbo Surge',
+    name: 'Turbo Boost',
+    shortName: 'TURBO',
+    icon: '⚡',
     points: 20,
-    color: 0xff9900,
-    secondaryColor: 0xff3300,
-    ringColor: 0xffcc00,
+    color: 0xffffff,
+    secondaryColor: 0xffea00,
+    ringColor: 0xff007f,
     probability: 0.09,
     duration: 6
   },
   TIME: {
     type: 'TIME',
     name: 'Chrono Freeze',
+    shortName: 'CHRONO',
+    icon: '⏳',
     points: 20,
-    color: 0x00e5ff,
-    secondaryColor: 0x7b1fa2,
-    ringColor: 0x99ffff,
+    color: 0xffffff,
+    secondaryColor: 0x00e5ff,
+    ringColor: 0xaa00ff,
     probability: 0.09,
     duration: 6
   },
   MAGNET: {
     type: 'MAGNET',
     name: 'Gravity Well',
+    shortName: 'MAGNET',
+    icon: '🧲',
     points: 25,
-    color: 0xcc00ff,
+    color: 0xffffff,
     secondaryColor: 0xff00aa,
-    ringColor: 0xff66ff,
+    ringColor: 0xffea00,
     probability: 0.05,
     duration: 7
   },
   SHIELD: {
     type: 'SHIELD',
     name: 'Aegis Shield',
+    shortName: 'SHIELD',
+    icon: '🛡️',
     points: 25,
-    color: 0x00ff88,
-    secondaryColor: 0x00aaff,
-    ringColor: 0x88ffcc,
+    color: 0xffffff,
+    secondaryColor: 0x00ff88,
+    ringColor: 0xff00aa,
     probability: 0.04,
     duration: 15 // Or until 1 collision is absorbed
   }

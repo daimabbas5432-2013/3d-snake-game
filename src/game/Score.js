@@ -6,9 +6,10 @@
 import { COMBO_CONFIG, SPEED_CONFIG, PHASES } from './Constants.js';
 
 export class Score {
-  constructor() {
+  constructor(initialMode = 'RAINBOW_STORM') {
+    this.currentMode = initialMode;
     this.score = 0;
-    this.highScore = this.loadHighScore();
+    this.highScore = this.loadHighScore(this.currentMode);
     this.length = 3;
     this.foodsCollected = 0;
     this.level = 1;
@@ -20,13 +21,40 @@ export class Score {
     this.unlockedMilestones = new Set();
   }
 
-  loadHighScore() {
-    const saved = localStorage.getItem('neon_snake_highscore');
-    return saved ? parseInt(saved, 10) || 0 : 0;
+  getStorageKey(modeKey) {
+    return `neon_snake_high_${modeKey}`;
+  }
+
+  loadHighScore(modeKey = this.currentMode) {
+    const key = this.getStorageKey(modeKey);
+    const saved = localStorage.getItem(key);
+    if (saved) return parseInt(saved, 10) || 0;
+
+    // Fallback to legacy high score if this is RAINBOW_STORM
+    if (modeKey === 'RAINBOW_STORM') {
+      const legacy = localStorage.getItem('neon_snake_highscore');
+      if (legacy) return parseInt(legacy, 10) || 0;
+    }
+    return 0;
   }
 
   saveHighScore() {
+    const key = this.getStorageKey(this.currentMode);
+    localStorage.setItem(key, this.highScore.toString());
     localStorage.setItem('neon_snake_highscore', this.highScore.toString());
+  }
+
+  setMode(modeKey) {
+    this.currentMode = modeKey;
+    this.highScore = this.loadHighScore(modeKey);
+  }
+
+  getAllHighScores() {
+    return {
+      RAINBOW_STORM: this.loadHighScore('RAINBOW_STORM'),
+      PORTAL: this.loadHighScore('PORTAL'),
+      ENEMY_BOTS: this.loadHighScore('ENEMY_BOTS')
+    };
   }
 
   reset() {

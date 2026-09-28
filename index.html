@@ -44,15 +44,21 @@
         </div>
       </div>
 
-      <!-- Center: Status / Title -->
+      <!-- Center: Status / Title & Mode Event -->
       <div class="hud-center">
-        <div class="hud-game-title">NEON VIPER 3D</div>
+        <div id="hud-game-title" class="hud-game-title">NEON SNAKE</div>
         <div class="hud-status-row">
-          <div class="hud-status-badge">
+          <div id="hud-mode-badge" class="hud-status-badge">
             <span class="hud-status-dot"></span>
-            <span>SYSTEM ACTIVE</span>
+            <span id="hud-mode-name">RAINBOW STORM</span>
           </div>
           <div id="hud-phase" class="hud-phase-badge">NEON CITY</div>
+        </div>
+        <!-- Compact Mode Event Indicator (e.g. Rainbow Storm countdown or Portals active) -->
+        <div id="hud-mode-event" class="hud-mode-event">
+          <span id="hud-event-icon">🌈</span>
+          <span id="hud-event-text">RAINBOW STORM</span>
+          <span id="hud-event-timer" class="hud-event-timer">15.0s</span>
         </div>
       </div>
 
@@ -67,7 +73,7 @@
             LEN: <span id="hud-length">03</span>
           </div>
           <div class="glass-panel hud-stat-chip">
-            SPD: <span id="hud-speed">01</span>
+            LVL: <span id="hud-speed">01</span>
           </div>
           <div class="hud-actions">
             <!-- Mute Toggle Button -->
@@ -97,13 +103,39 @@
       </div>
     </div>
 
-    <!-- Active Power-up Banner -->
-    <div id="powerup-banner" class="glass-panel">
+    <!-- Compact Stylish Ability Notification Toast (<12% screen, upper-right / top) -->
+    <div id="ability-toast" class="glass-panel ability-toast">
+      <div id="ability-toast-badge" class="ability-toast-badge">
+        <span id="ability-toast-icon">⚡</span>
+      </div>
+      <div class="ability-toast-info">
+        <div id="ability-toast-title" class="ability-toast-title">TURBO ACTIVATED</div>
+        <div id="ability-toast-time" class="ability-toast-time">6.0s</div>
+      </div>
+    </div>
+
+    <!-- Small Active Ability HUD Panel (Permanent countdown & progress bar) -->
+    <div id="active-ability-hud" class="glass-panel ability-hud-card">
+      <div class="ability-hud-header">
+        <span class="ability-hud-tag">ACTIVE ABILITY</span>
+        <span id="ability-hud-timer" class="ability-hud-timer">0.0s</span>
+      </div>
+      <div class="ability-hud-title-row">
+        <span id="ability-hud-icon" class="ability-hud-icon">⚡</span>
+        <span id="ability-hud-name" class="ability-hud-name">TURBO</span>
+      </div>
+      <div class="ability-hud-meter">
+        <div id="ability-hud-bar" class="ability-hud-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Legacy Power-up Banner for compatibility -->
+    <div id="powerup-banner" class="glass-panel" style="display: none;">
       <span id="powerup-name">OVERCHARGE CORE</span>
       <span id="powerup-timer">8.0s</span>
     </div>
 
-    <!-- Milestone "WOW Moment" Epic Celebration Banner -->
+    <!-- Milestone Compact Top Header Badge (Non-intrusive) -->
     <div id="milestone-banner" class="milestone-overlay">
       <div class="milestone-card glass-panel">
         <div id="milestone-title" class="milestone-title">OVERDRIVE ACTIVATED</div>
@@ -111,31 +143,75 @@
       </div>
     </div>
 
-    <!-- Modal 1: Title Screen / Main Menu -->
+    <!-- Modal 1: Premium Game Launcher / Main Menu with 3 Selectable Game Modes -->
     <div id="modal-menu" class="screen-modal active">
-      <div class="glass-panel modal-card">
+      <div class="glass-panel modal-card menu-launcher-card">
         <div class="game-logo">
-          <h1 class="title-main">NEON VIPER</h1>
+          <h1 class="title-main">NEON SNAKE</h1>
           <div class="title-sub">3D CYBER ARCADE</div>
         </div>
 
-        <div class="high-score-badge">
-          <span>HIGH SCORE:</span>
-          <span id="menu-high-score">000000</span>
+        <!-- 3 Selectable Game Modes Section -->
+        <div class="mode-section">
+          <div class="mode-section-title">
+            <span class="mode-line"></span>
+            <span>SELECT GAME MODE</span>
+            <span class="mode-line"></span>
+          </div>
+
+          <div class="mode-cards-grid">
+            <!-- Mode 1: Rainbow Storm -->
+            <div class="mode-card active" data-mode="RAINBOW_STORM" id="mode-card-rainbow" role="button" tabindex="0">
+              <div class="mode-card-badge">SURVIVE THE STORM</div>
+              <div class="mode-card-icon">🌈</div>
+              <div class="mode-card-name">RAINBOW STORM</div>
+              <div class="mode-card-desc">Survive the storm. Chase rare Rainbow Orbs.</div>
+              <div class="mode-card-footer">
+                <span class="mode-high-label">BEST:</span>
+                <span id="menu-high-rainbow" class="mode-high-val">000000</span>
+              </div>
+              <div class="mode-card-active-tag">SELECTED</div>
+            </div>
+
+            <!-- Mode 2: Portal Mode -->
+            <div class="mode-card" data-mode="PORTAL" id="mode-card-portal" role="button" tabindex="0">
+              <div class="mode-card-badge">WARP TECH</div>
+              <div class="mode-card-icon">🌀</div>
+              <div class="mode-card-name">PORTAL MODE</div>
+              <div class="mode-card-desc">Teleport through the arena and master the portals.</div>
+              <div class="mode-card-footer">
+                <span class="mode-high-label">BEST:</span>
+                <span id="menu-high-portal" class="mode-high-val">000000</span>
+              </div>
+              <div class="mode-card-active-tag">SELECT</div>
+            </div>
+
+            <!-- Mode 3: Enemy Bots -->
+            <div class="mode-card" data-mode="ENEMY_BOTS" id="mode-card-bots" role="button" tabindex="0">
+              <div class="mode-card-badge">AI DRONES</div>
+              <div class="mode-card-icon">👾</div>
+              <div class="mode-card-name">ENEMY BOTS</div>
+              <div class="mode-card-desc">Survive against intelligent arena enemies.</div>
+              <div class="mode-card-footer">
+                <span class="mode-high-label">BEST:</span>
+                <span id="menu-high-bots" class="mode-high-val">000000</span>
+              </div>
+              <div class="mode-card-active-tag">SELECT</div>
+            </div>
+          </div>
         </div>
 
-        <button id="btn-start" class="cyber-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <button id="btn-start" class="cyber-btn play-btn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
-          START MISSION
+          PLAY MISSION
         </button>
 
         <div class="glass-panel controls-card">
           <div style="font-weight: 700; color: #fff; margin-bottom: 2px;">PILOT CONTROLS</div>
-          <div><span class="control-key">WASD</span> or <span class="control-key">ARROWS</span> &mdash; Steer Viper</div>
-          <div><span class="control-key">P</span> &mdash; Pause / Resume</div>
-          <div>Swipe gestures &amp; touch D-pad supported on mobile</div>
+          <div><span class="control-key">WASD</span> or <span class="control-key">ARROWS</span> &mdash; Steer Snake</div>
+          <div><span class="control-key">P</span> &mdash; Pause / Resume &bull; Mobile touch D-pad supported</div>
         </div>
       </div>
     </div>
@@ -156,6 +232,8 @@
     <div id="modal-gameover" class="screen-modal">
       <div class="glass-panel modal-card game-over-card">
         <h2 class="game-over-title">MISSION TERMINATED</h2>
+
+        <div id="go-mode-badge" class="go-mode-badge">MODE: RAINBOW STORM</div>
 
         <div id="go-record-badge" class="new-record-banner" style="display: none;">
           ★ NEW RECORD ACHIEVED ★

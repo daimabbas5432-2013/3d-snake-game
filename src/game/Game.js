@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {
   GAME_STATES,
+  GAME_MODES,
   DIRECTIONS,
   SPEED_CONFIG,
   FOOD_TYPES,
@@ -14,6 +15,8 @@ import { Snake } from './Snake.js';
 import { Food } from './Food.js';
 import { Score } from './Score.js';
 import { Input } from './Input.js';
+import { PortalManager } from './PortalManager.js';
+import { EnemyManager } from './EnemyManager.js';
 
 export class Game {
   constructor(sceneManager, arena, lighting, particles, audio, ui) {
@@ -26,10 +29,22 @@ export class Game {
 
     this.state = GAME_STATES.MENU;
 
+    // Game Mode Management
+    this.currentMode = GAME_MODES.RAINBOW_STORM.id;
+    this.portalManager = null;
+    this.enemyManager = null;
+
+    // Rainbow Storm Dynamic Event State
+    this.stormActive = false;
+    this.stormTimer = 0;
+    this.stormCountdown = 12.0; // Seconds until next periodic storm
+    this.stormMoteCooldown = 0;
+
     // Game Entities
     this.snake = new Snake(this.sceneManager.scene, this.particles);
     this.food = new Food(this.sceneManager.scene);
     this.score = new Score();
+    this.score.setMode(this.currentMode);
 
     // Input Controller
     this.input = new Input({
@@ -71,6 +86,7 @@ export class Game {
     this.ui.onRestart = () => this.restart();
     this.ui.onMenu = () => this.initMenuState();
     this.ui.onMuteToggle = () => this.audio.toggleMute();
+    this.ui.onSelectMode = (modeKey) => this.selectMode(modeKey);
     this.ui.onDirectionInput = (dirName) => {
       if (this.state === GAME_STATES.PLAYING && DIRECTIONS[dirName]) {
         this.input.requestDirection(DIRECTIONS[dirName]);
@@ -81,38 +97,118 @@ export class Game {
     this.ui.updateMuteIcon(this.audio.isMuted);
   }
 
+  selectMode(modeKey) {
+    if (!GAME_MODES[modeKey]) return;
+    this.cleanupModeObjects();
+    this.currentMode = GAME_MODES[modeKey].id;
+    this.score.setMode(this.currentMode);
+    this.ui.updateModeSelection(this.currentMode, this.score.getAllHighScores());
+  }
+
+  cleanupModeObjects() {
+    if (this.portalManager) {
+      this.portalManager.destroy();
+      this.portalManager = null;
+    }
+    if (this.enemyManager) {
+      this.enemyManager.destroy();
+      this.enemyManager = null;
+    }
+    this.stormActive = false;
+    this.stormTimer = 0;
+    this.stormCountdown = 12.0;
+  }
+
+  getModeEventData() {
+    if (this.currentMode === GAME_MODES.RAINBOW_STORM.id) {
+      if (this.stormActive) {
+        return {
+          active: true,
+          icon: '🌈',
+          text: 'RAINBOW STORM',
+          timer: this.stormTimer
+        };
+      }
+      return { active: false };
+    } else if (this.currentMode === GAME_MODES.PORTAL.id) {
+      return {
+        active: true,
+        icon: '🌀',
+        text: 'PORTALS ACTIVE',
+        timer: ''
+      };
+    } else if (this.currentMode === GAME_MODES.ENEMY_BOTS.id) {
+      const count = this.enemyManager ? this.enemyManager.getBotCount() : 1;
+      return {
+        active: true,
+        icon: '👾',
+        text: `AI DRONES: ${count}`,
+        timer: ''
+      };
+    }
+    return null;
+  }
+
   initMenuState() {
+    this.cleanupModeObjects();
     this.state = GAME_STATES.MENU;
     this.lighting.setAlert(false);
     this.arena.setWarning(0);
+    this.arena.setIntensity(1, false);
 
     // Reset snake in the middle for background showcase
     this.snake.reset(5, 10, 4, DIRECTIONS.RIGHT);
     this.food.spawn(this.snake);
 
+    this.score.setMode(this.currentMode);
     this.ui.showState(GAME_STATES.MENU, {
-      highScore: this.score.highScore
+      highScore: this.score.highScore,
+      activeMode: this.currentMode,
+      allHighScores: this.score.getAllHighScores(),
+      modeName: GAME_MODES[this.currentMode]?.name
     });
   }
 
   start() {
     this.audio.ensureContext();
+    this.cleanupModeObjects();
+
     this.state = GAME_STATES.PLAYING;
+    this.score.setMode(this.currentMode);
     this.score.reset();
     this.activePowerup = null;
 
     this.lighting.setAlert(false);
     this.arena.setWarning(0);
+    this.arena.setIntensity(1, false);
 
     this.input.reset(DIRECTIONS.RIGHT);
     this.snake.reset(5, 10, 3, DIRECTIONS.RIGHT);
-    this.food.spawn(this.snake);
+
+    // Setup mode-specific entities
+    if (this.currentMode === GAME_MODES.PORTAL.id) {
+      this.portalManager = new PortalManager(this.sceneManager.scene, this.particles);
+      this.portalManager.spawnPortals(this.snake, this.food);
+    } else if (this.currentMode === GAME_MODES.ENEMY_BOTS.id) {
+      this.enemyManager = new EnemyManager(this.sceneManager.scene, this.particles);
+      this.enemyManager.initBots(this.snake, this.food);
+    } else if (this.currentMode === GAME_MODES.RAINBOW_STORM.id) {
+      this.stormActive = false;
+      this.stormCountdown = 10.0;
+    }
+
+    const excludePos = [];
+    if (this.portalManager) {
+      if (this.portalManager.portalA) excludePos.push(this.portalManager.portalA.gridPosition);
+      if (this.portalManager.portalB) excludePos.push(this.portalManager.portalB.gridPosition);
+    }
+    this.food.spawn(this.snake, null, excludePos);
 
     this.accumulator = 0;
     this.lastTime = performance.now();
 
     this.ui.showState(GAME_STATES.PLAYING);
-    this.ui.updateHUD(this.score, this.activePowerup);
+    this.ui.updateHUD(this.score, this.activePowerup, this.getModeEventData());
   }
 
   restart() {
@@ -154,7 +250,7 @@ export class Game {
       const nextDir = this.input.nextDirection();
       this.snake.tick(nextDir);
 
-      // Check collision
+      // Check collision with walls or self
       const hitWall = this.snake.checkWallCollision();
       const hitSelf = this.snake.checkSelfCollision();
 
@@ -181,11 +277,52 @@ export class Game {
               this.input.currentDirection = safeDirs[0];
             }
           }
-          this.ui.updateHUD(this.score, this.activePowerup);
+          this.ui.updateHUD(this.score, this.activePowerup, this.getModeEventData());
           return;
         }
         this.triggerGameOver();
         return;
+      }
+
+      // Check Portal Mode Warp mechanics
+      if (this.currentMode === GAME_MODES.PORTAL.id && this.portalManager) {
+        const teleported = this.portalManager.checkTeleport(this.snake);
+        if (teleported) {
+          if (this.audio.playPortalTeleport) this.audio.playPortalTeleport();
+          this.sceneManager.triggerShake(0.45);
+          this.sceneManager.triggerPunch();
+          this.arena.triggerShockwave(this.snake.getHeadWorldPosition(), 0x00ffff);
+          this.score.addBonus(60);
+          this.ui.bounceScore();
+        }
+      }
+
+      // Check Enemy Bots collisions & proximity
+      if (this.currentMode === GAME_MODES.ENEMY_BOTS.id && this.enemyManager) {
+        const hitBot = this.enemyManager.checkCollision(this.snake);
+        if (hitBot) {
+          if (this.snake.hasShield) {
+            this.snake.setShield(false);
+            this.activePowerup = null;
+            this.audio.playShieldAbsorb();
+            this.sceneManager.triggerShake(0.65);
+            const headPos = this.snake.getHeadWorldPosition();
+            this.particles.spawnBurst(headPos, 0x00ff88, 55, 1.8);
+          } else {
+            if (this.audio.playEnemyCrash) this.audio.playEnemyCrash();
+            this.triggerGameOver();
+            return;
+          }
+        }
+
+        // Proximity warning if drone is close to snake head
+        const closeBot = this.enemyManager.isAnyBotNear(this.snake.getHeadGrid(), 3);
+        if (closeBot) {
+          this.arena.setWarning(0.85);
+          if (Math.random() < 0.25 && this.audio.playEnemyWarning) {
+            this.audio.playEnemyWarning();
+          }
+        }
       }
 
       // Check food collection
@@ -203,7 +340,7 @@ export class Game {
       );
       if (distToBorder <= 1) {
         this.arena.setWarning(1.0 - distToBorder * 0.5);
-      } else {
+      } else if (this.currentMode !== GAME_MODES.ENEMY_BOTS.id || !this.enemyManager?.isAnyBotNear(head, 3)) {
         this.arena.setWarning(0);
       }
     } else if (this.state === GAME_STATES.MENU) {
@@ -237,9 +374,15 @@ export class Game {
     }
 
     // Dynamic environment scaling as score climbs & overdrive mode
-    const isOverdrive = (this.score.score >= 250) || (this.activePowerup && this.activePowerup.type === 'RAINBOW');
+    const isOverdrive = (this.score.score >= 250) || (this.activePowerup && this.activePowerup.type === 'RAINBOW') || this.stormActive;
     this.arena.setIntensity(this.score.level, isOverdrive);
     this.lighting.setIntensity(this.score.level);
+
+    // Rainbow storm extra rewards
+    if (this.currentMode === GAME_MODES.RAINBOW_STORM.id && this.stormActive) {
+      this.score.addBonus(120);
+      this.particles.spawnBurst(foodPos, 0xff00ea, 35, 1.6);
+    }
 
     if (foodType.type === 'NORMAL') {
       this.audio.playEat(result.combo);
@@ -249,42 +392,62 @@ export class Game {
     } else if (foodType.type === 'RAINBOW') {
       this.audio.playRainbowOrb();
       this.particles.spawnBurst(foodPos, 0xff00ff, 80, 2.2);
-      this.sceneManager.triggerShake(0.5);
+      this.sceneManager.triggerShake(0.4);
       this.activePowerup = {
         type: 'RAINBOW',
         name: 'Rainbow Overdrive',
-        timer: foodType.duration
+        shortName: 'RAINBOW',
+        icon: '🌈',
+        timer: foodType.duration,
+        maxDuration: foodType.duration
       };
+      this.ui.showAbilityToast(this.activePowerup);
     } else if (foodType.type === 'SHIELD') {
       this.audio.playPowerup();
       this.snake.setShield(true);
       this.activePowerup = {
         type: 'SHIELD',
         name: 'Aegis Shield',
-        timer: foodType.duration
+        shortName: 'SHIELD',
+        icon: '🛡️',
+        timer: foodType.duration,
+        maxDuration: foodType.duration
       };
+      this.ui.showAbilityToast(this.activePowerup);
     } else if (foodType.type === 'SPEED') {
       this.audio.playPowerup();
       this.snake.setTurbo(true);
       this.activePowerup = {
         type: 'SPEED',
         name: 'Turbo Boost',
-        timer: foodType.duration
+        shortName: 'TURBO',
+        icon: '⚡',
+        timer: foodType.duration,
+        maxDuration: foodType.duration
       };
+      this.ui.showAbilityToast(this.activePowerup);
     } else if (foodType.type === 'TIME') {
       this.audio.playPowerup();
       this.activePowerup = {
         type: 'TIME',
         name: 'Chrono Freeze',
-        timer: foodType.duration
+        shortName: 'CHRONO',
+        icon: '⏳',
+        timer: foodType.duration,
+        maxDuration: foodType.duration
       };
+      this.ui.showAbilityToast(this.activePowerup);
     } else if (foodType.type === 'MAGNET') {
       this.audio.playPowerup();
       this.activePowerup = {
         type: 'MAGNET',
         name: 'Gravity Well',
-        timer: foodType.duration
+        shortName: 'MAGNET',
+        icon: '🧲',
+        timer: foodType.duration,
+        maxDuration: foodType.duration
       };
+      this.ui.showAbilityToast(this.activePowerup);
     }
 
     // Check for milestone "WOW Moment" (25, 50, 100, 250)
@@ -300,9 +463,20 @@ export class Game {
     this.ui.showFloatingScore(result.earnedPoints, result.combo, screenCoord);
     this.ui.bounceScore();
 
-    // Spawn next food
-    this.food.spawn(this.snake);
-    this.ui.updateHUD(this.score, this.activePowerup);
+    // Spawn next food with collision exclusion
+    const excludePos = [];
+    if (this.portalManager) {
+      if (this.portalManager.portalA) excludePos.push(this.portalManager.portalA.gridPosition);
+      if (this.portalManager.portalB) excludePos.push(this.portalManager.portalB.gridPosition);
+    }
+    if (this.enemyManager) {
+      for (const bot of this.enemyManager.bots) {
+        excludePos.push(bot.gridPosition);
+      }
+    }
+    const forcedType = (this.stormActive && Math.random() < 0.45) ? FOOD_TYPES.RAINBOW : null;
+    this.food.spawn(this.snake, forcedType, excludePos);
+    this.ui.updateHUD(this.score, this.activePowerup, this.getModeEventData());
   }
 
   triggerMilestoneMoment(milestone) {
@@ -345,7 +519,8 @@ export class Game {
         highScore: this.score.highScore,
         length: this.score.length,
         foodsCollected: this.score.foodsCollected,
-        isNewHighScore: this.score.isNewHighScore
+        isNewHighScore: this.score.isNewHighScore,
+        modeName: GAME_MODES[this.currentMode]?.name || 'RAINBOW STORM'
       });
     }, 450);
   }
@@ -417,10 +592,41 @@ export class Game {
         if (this.activePowerup.type === 'SPEED') this.snake.setTurbo(false);
         this.activePowerup = null;
       }
-      this.ui.updateHUD(this.score, this.activePowerup);
+      this.ui.updateHUD(this.score, this.activePowerup, this.getModeEventData());
     }
 
-    // 2. Fixed-rate logic ticks
+    // 2. Rainbow Storm Periodic Event Loop
+    if (this.state === GAME_STATES.PLAYING && this.currentMode === GAME_MODES.RAINBOW_STORM.id) {
+      if (this.stormActive) {
+        this.stormTimer -= deltaTime;
+        this.stormMoteCooldown -= deltaTime;
+        if (this.stormMoteCooldown <= 0) {
+          this.stormMoteCooldown = 0.12;
+          if (this.particles.spawnStormMotes) {
+            this.particles.spawnStormMotes(6);
+          }
+        }
+        // Energetic lighting & faster floor (never blinding)
+        this.arena.setIntensity(Math.max(2, this.score.level + 1), true);
+        if (this.stormTimer <= 0) {
+          this.stormActive = false;
+          this.stormCountdown = 22.0;
+          this.arena.setIntensity(this.score.level, false);
+        }
+      } else {
+        this.stormCountdown -= deltaTime;
+        if (this.stormCountdown <= 0) {
+          this.stormActive = true;
+          this.stormTimer = 18.0;
+          if (this.audio.playRainbowStorm) this.audio.playRainbowStorm();
+          this.sceneManager.triggerShake(0.35);
+          this.lighting.flash(0xff00ff, 0.45);
+          this.food.spawn(this.snake, FOOD_TYPES.RAINBOW);
+        }
+      }
+    }
+
+    // 3. Fixed-rate logic ticks
     if (this.state === GAME_STATES.PLAYING || this.state === GAME_STATES.MENU) {
       const tickRate = this.state === GAME_STATES.MENU ? 0.22 : this.getTickRate();
       this.accumulator += deltaTime;
@@ -433,15 +639,15 @@ export class Game {
       // Score combo countdown
       if (this.state === GAME_STATES.PLAYING) {
         this.score.update(deltaTime);
-        this.ui.updateHUD(this.score, this.activePowerup);
+        this.ui.updateHUD(this.score, this.activePowerup, this.getModeEventData());
       }
     }
 
-    // 3. Smooth visual interpolation fraction
+    // 4. Smooth visual interpolation fraction
     const tickRate = this.state === GAME_STATES.MENU ? 0.22 : this.getTickRate();
     const alpha = Math.min(1.0, this.accumulator / tickRate);
 
-    // 4. Update 3D visual components
+    // 5. Update 3D visual components
     this.snake.update(alpha, this.gameTime, deltaTime);
     const magnetTarget = (this.activePowerup && this.activePowerup.type === 'MAGNET')
       ? this.snake.getHeadWorldPosition()
@@ -451,11 +657,21 @@ export class Game {
     this.arena.update(this.gameTime, deltaTime);
     this.lighting.update(this.gameTime, deltaTime);
 
-    // 5. Update dynamic camera
+    // 6. Update mode-specific systems
+    if (this.state === GAME_STATES.PLAYING) {
+      if (this.portalManager) {
+        this.portalManager.update(deltaTime, this.gameTime, this.snake, this.food);
+      }
+      if (this.enemyManager) {
+        this.enemyManager.update(deltaTime, this.gameTime, this.snake, this.food, this.score.score);
+      }
+    }
+
+    // 7. Update dynamic camera
     const headWorld = this.snake.getHeadWorldPosition();
     this.sceneManager.update(deltaTime, this.state, headWorld);
 
-    // 6. Render frame
+    // 8. Render frame
     this.sceneManager.render();
   }
 }

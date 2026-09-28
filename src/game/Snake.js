@@ -43,18 +43,22 @@ export class Snake {
 
   initGeometriesAndMaterials() {
     // 1. Head mesh components
-    this.headGeo = new THREE.BoxGeometry(0.90, 0.60, 1.02);
+    this.headGeo = new THREE.BoxGeometry(0.92, 0.62, 1.05);
     this.headMat = new THREE.MeshStandardMaterial({
-      color: 0x050c20,
-      metalness: 0.95,
-      roughness: 0.15,
-      emissive: 0x004488,
-      emissiveIntensity: 0.7
+      color: 0x02040e, // Deep dark obsidian core
+      metalness: 0.96,
+      roughness: 0.08,
+      emissive: 0x002244,
+      emissiveIntensity: 0.8
     });
 
-    // Visor LED eyes
-    this.eyeGeo = new THREE.BoxGeometry(0.24, 0.12, 0.16);
-    this.eyeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    // Dorsal crown crest along top spine of head
+    this.crestGeo = new THREE.BoxGeometry(0.10, 0.16, 0.78);
+    this.crestMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+
+    // Visor LED eyes (Bright white core with neon cyan aura)
+    this.eyeGeo = new THREE.BoxGeometry(0.26, 0.14, 0.18);
+    this.eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
     // Side cheek neon accents
     this.finGeo = new THREE.BoxGeometry(0.08, 0.28, 0.65);
@@ -64,12 +68,20 @@ export class Snake {
     this.segmentGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.70, 14);
     this.segmentGeo.rotateX(Math.PI / 2);
 
-    this.ringGeo = new THREE.TorusGeometry(0.45, 0.07, 8, 24);
+    this.ringGeo = new THREE.TorusGeometry(0.46, 0.08, 10, 24);
+    this.edgeCollarGeo = new THREE.TorusGeometry(0.50, 0.025, 8, 24);
 
     this.chassisMat = new THREE.MeshStandardMaterial({
-      color: 0x071026,
-      metalness: 0.92,
-      roughness: 0.18
+      color: 0x030612, // Dark obsidian body core for maximum contrast
+      metalness: 0.95,
+      roughness: 0.10
+    });
+
+    // Bright outer edge collar material
+    this.edgeMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.90
     });
 
     // 3. Aegis Shield Bubble (translucent glowing sphere)
@@ -140,9 +152,14 @@ export class Snake {
   createHeadMesh() {
     const group = new THREE.Group();
 
-    // Cyber skull
+    // Cyber skull (deep obsidian alloy)
     const mainHead = new THREE.Mesh(this.headGeo, this.headMat);
     group.add(mainHead);
+
+    // Raised aerodynamic dorsal spine crest
+    const crest = new THREE.Mesh(this.crestGeo, this.crestMat);
+    crest.position.set(0, 0.35, -0.05);
+    group.add(crest);
 
     // Aerodynamic tapered nose cone
     const noseGeo = new THREE.ConeGeometry(0.40, 0.56, 4);
@@ -153,13 +170,13 @@ export class Snake {
       metalness: 0.95,
       roughness: 0.15,
       emissive: 0x00f0ff,
-      emissiveIntensity: 1.0
+      emissiveIntensity: 1.4
     });
     const nose = new THREE.Mesh(noseGeo, noseMat);
     nose.position.z = -0.70;
     group.add(nose);
 
-    // Dual glowing neon eyes
+    // Dual glowing neon eyes (Pure white diamond center + cyan aura)
     const leftEye = new THREE.Mesh(this.eyeGeo, this.eyeMat);
     leftEye.position.set(-0.28, 0.14, -0.52);
     group.add(leftEye);
@@ -177,8 +194,8 @@ export class Snake {
     rightFin.position.set(0.48, 0.06, 0.05);
     group.add(rightFin);
 
-    // Dynamic headlight casting pool ahead
-    this.headLight = new THREE.PointLight(0x00f0ff, 4.0, 9, 2);
+    // Dynamic headlight casting bright pool ahead of snake
+    this.headLight = new THREE.PointLight(0xffffff, 4.8, 10, 2);
     this.headLight.position.set(0, 0.35, -0.75);
     group.add(this.headLight);
 
@@ -188,15 +205,19 @@ export class Snake {
   createSegmentMesh(index) {
     const group = new THREE.Group();
 
-    // Chassis core
+    // Deep obsidian chassis core
     const core = new THREE.Mesh(this.segmentGeo, this.chassisMat);
     group.add(core);
+
+    // Bright high-contrast white edge collar
+    const edgeCollar = new THREE.Mesh(this.edgeCollarGeo, this.edgeMat);
+    group.add(edgeCollar);
 
     // Dynamic glowing neon ring with unique material per segment
     const ringMat = new THREE.MeshStandardMaterial({
       color: 0x00f0ff,
       emissive: 0x00f0ff,
-      emissiveIntensity: 1.3,
+      emissiveIntensity: 2.2,
       metalness: 0.85,
       roughness: 0.15
     });
@@ -423,13 +444,14 @@ export class Snake {
           else if (segDirZ === 1) segAngle = Math.PI;
           curMesh.rotation.y = segAngle;
 
-          // DYNAMIC RAINBOW COLOR SHIFTING ALONG THE BODY
+          // DYNAMIC HIGH-CONTRAST NEON SHIFTING ALONG THE BODY
+          // Offset by +160 deg from floor baseHue so the snake always strongly contrasts with the floor!
           const seg = this.meshes[i];
           if (seg && seg.ringMat) {
-            const segHue = (baseHue + i * 16) % 360;
+            const segHue = (baseHue + 160 + i * 18) % 360;
             seg.ringMat.color.setHSL(segHue / 360, 1.0, 0.55);
             seg.ringMat.emissive.setHSL(segHue / 360, 1.0, 0.55);
-            seg.ringMat.emissiveIntensity = 1.1 + wave * 0.35 + surgeGlow + lengthGlow;
+            seg.ringMat.emissiveIntensity = 2.0 + wave * 0.45 + surgeGlow + lengthGlow;
           }
         }
       }

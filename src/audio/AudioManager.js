@@ -431,6 +431,88 @@ export class AudioManager {
         t += n.d * 0.85;
       });
     } catch (e) {}
+  playRainbowStorm() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+      const now = this.ctx.currentTime;
+      const notes = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.15, now + idx * 0.05 + 0.2);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.35);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1800, now);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.36);
+      });
+    } catch (e) {}
+  }
+
+  playPortalTeleport() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(1400, now + 0.09);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.28);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } catch (e) {}
+  }
+
+  playEnemyWarning() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(850, now);
+      osc.frequency.setValueAtTime(620, now + 0.05);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.13);
+    } catch (e) {}
+  }
+
+  playEnemyCrash() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.45);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    } catch (e) {}
   }
 
   startAmbientHum() {
