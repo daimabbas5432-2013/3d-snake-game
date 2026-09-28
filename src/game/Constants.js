@@ -30,43 +30,47 @@ export const SPEED_CONFIG = {
 export const FOOD_TYPES = {
   NORMAL: {
     type: 'NORMAL',
-    name: 'Plasma Orb',
+    name: 'Plasma Crystal',
     points: 10,
-    color: 0x00f0ff,
-    glowColor: 0x0088ff,
-    probability: 0.75,
+    color: 0xff007f,      // Hot Pink / Neon Magenta (stunning contrast on cyan/blue floor)
+    glowColor: 0x00f0ff,  // Radiant Cyan secondary
+    ringColor: 0xff1493,
+    probability: 0.70,
     duration: 0
   },
   HYPER: {
     type: 'HYPER',
     name: 'Overcharge Core',
     points: 50,
-    color: 0xffb700,
-    glowColor: 0xff4400,
-    probability: 0.15,
+    color: 0xffea00,      // Electric Solar Yellow
+    glowColor: 0xff5500,  // Radiant Blaze Orange
+    ringColor: 0xffd700,
+    probability: 0.18,
     duration: 8 // seconds
   },
   CHRONO: {
     type: 'CHRONO',
-    name: 'Time Distortion',
+    name: 'Chrono Warp Crystal',
     points: 30,
-    color: 0x9d00ff,
-    glowColor: 0xdf00ff,
-    probability: 0.10,
+    color: 0xaa00ff,      // Neon Electric Purple
+    glowColor: 0x00f0ff,  // Vibrant Cyan
+    ringColor: 0xdf00ff,
+    probability: 0.12,
     duration: 6 // seconds
   }
 };
 
 export const PALETTE = {
   CYAN: 0x00f0ff,
-  BLUE: 0x0077ff,
-  MAGENTA: 0xff007f,
-  PURPLE: 0x9d00ff,
-  GOLD: 0xffb700,
+  ELECTRIC_BLUE: 0x0066ff,
+  HOT_PINK: 0xff007f,
+  MAGENTA: 0xff00a0,
+  PURPLE: 0x7b1fa2,
+  DEEP_PURPLE: 0x240046,
+  NEON_YELLOW: 0xffea00,
+  NEON_ORANGE: 0xff6600,
   RED_ALERT: 0xff1744,
-  DARK_BG: 0x04060e,
-  GRID_BASE: 0x0b1021,
-  GRID_LINES: 0x1a264a,
+  DARK_SPACE: 0x03030a,
   GRID_GLOW: 0x00f0ff
 };
 

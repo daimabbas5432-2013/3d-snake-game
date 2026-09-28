@@ -196,8 +196,19 @@ export class Game {
 
     // Visual FX & Audio
     const foodPos = this.food.getWorldPosition();
-    this.particles.spawnBurst(foodPos, foodType.color, 35, 1.2);
+    this.particles.spawnBurst(foodPos, foodType.color, 45, 1.3);
     this.sceneManager.triggerPunch();
+    this.sceneManager.triggerShake(0.25); // Punchy satisfying camera impact
+    this.snake.triggerSurge();           // Electric light wave rushes through snake
+
+    // High combo celebration fireworks!
+    if (result.combo >= 3) {
+      this.particles.spawnFireworks(foodPos);
+    }
+
+    // Dynamic environment scaling as score climbs
+    this.arena.setIntensity(this.score.level);
+    this.lighting.setIntensity(this.score.level);
 
     if (foodType.type === 'NORMAL') {
       this.audio.playEat(result.combo);
@@ -216,6 +227,7 @@ export class Game {
     // Screen popup position calculation
     const screenCoord = this.toScreenCoordinates(foodPos);
     this.ui.showFloatingScore(result.earnedPoints, result.combo, screenCoord);
+    this.ui.bounceScore();
 
     // Spawn next food
     this.food.spawn(this.snake);

@@ -1,5 +1,6 @@
 /**
- * 3D Futuristic Energy Orbs & Power-ups
+ * 3D Glowing Energy Crystal / Orb
+ * Faceted rotating core, gyroscopic energy rings, orbiting satellite sparkles, and intense floor illumination
  */
 
 import * as THREE from 'three';
@@ -14,52 +15,75 @@ export class Food {
 
     this.gridPosition = { x: 10, z: 10 };
     this.currentType = FOOD_TYPES.NORMAL;
+    this.satellites = [];
 
     this.initMeshes();
   }
 
   initMeshes() {
-    // 1. Core glowing energy sphere
-    this.coreGeo = new THREE.SphereGeometry(0.32, 24, 24);
-    this.coreMat = new THREE.MeshStandardMaterial({
-      color: 0x00f0ff,
-      emissive: 0x00f0ff,
-      emissiveIntensity: 1.4,
-      metalness: 0.2,
+    // 1. Faceted Glowing Energy Crystal Core
+    this.crystalGeo = new THREE.OctahedronGeometry(0.36, 0);
+    this.crystalMat = new THREE.MeshStandardMaterial({
+      color: 0xff007f,
+      emissive: 0xff007f,
+      emissiveIntensity: 1.8,
+      metalness: 0.3,
       roughness: 0.1
     });
-    this.coreMesh = new THREE.Mesh(this.coreGeo, this.coreMat);
-    this.group.add(this.coreMesh);
+    this.crystalMesh = new THREE.Mesh(this.crystalGeo, this.crystalMat);
+    this.group.add(this.crystalMesh);
 
-    // 2. Gyroscopic outer rings
-    const ringGeo1 = new THREE.TorusGeometry(0.48, 0.03, 8, 24);
-    this.ringMat1 = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: false });
+    // Inner wireframe lattice for high-tech holographic effect
+    const wireGeo = new THREE.OctahedronGeometry(0.40, 0);
+    const wireMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.75
+    });
+    this.wireMesh = new THREE.Mesh(wireGeo, wireMat);
+    this.group.add(this.wireMesh);
+
+    // 2. Gyroscopic outer energy rings
+    const ringGeo1 = new THREE.TorusGeometry(0.55, 0.032, 8, 24);
+    this.ringMat1 = new THREE.MeshBasicMaterial({ color: 0x00ffff });
     this.ring1 = new THREE.Mesh(ringGeo1, this.ringMat1);
     this.group.add(this.ring1);
 
-    const ringGeo2 = new THREE.TorusGeometry(0.60, 0.025, 8, 24);
-    this.ringMat2 = new THREE.MeshBasicMaterial({ color: 0x9d00ff, wireframe: false });
+    const ringGeo2 = new THREE.TorusGeometry(0.68, 0.025, 8, 24);
+    this.ringMat2 = new THREE.MeshBasicMaterial({ color: 0xff00aa });
     this.ring2 = new THREE.Mesh(ringGeo2, this.ringMat2);
     this.group.add(this.ring2);
 
-    // 3. Dynamic point light attached to the orb
-    this.light = new THREE.PointLight(0x00f0ff, 3.0, 5, 2);
+    // 3. Orbiting Micro-Sparkle Satellites (4 glowing particles orbiting the crystal)
+    const satGeo = new THREE.SphereGeometry(0.06, 8, 8);
+    for (let i = 0; i < 4; i++) {
+      const satMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+      const sat = new THREE.Mesh(satGeo, satMat);
+      this.group.add(sat);
+      this.satellites.push({
+        mesh: sat,
+        angleOffset: (Math.PI * 2 * i) / 4,
+        speed: 3.5,
+        radius: 0.85,
+        heightOffset: (i % 2 === 0 ? 0.2 : -0.2)
+      });
+    }
+
+    // 4. Dynamic Point Light casting colored pool onto reflective floor
+    this.light = new THREE.PointLight(0xff007f, 4.2, 6.5, 1.8);
     this.group.add(this.light);
   }
 
   gridToWorld(gx, gz) {
     return {
       x: (gx + 0.5) * CELL_SIZE - ARENA_HALF_SIZE,
-      y: 0.45,
+      y: 0.48,
       z: (gz + 0.5) * CELL_SIZE - ARENA_HALF_SIZE
     };
   }
 
-  /**
-   * Spawn a new orb at an unoccupied grid cell
-   */
   spawn(snake) {
-    // Pick random food type according to probabilities
     const rand = Math.random();
     if (rand < FOOD_TYPES.CHRONO.probability) {
       this.currentType = FOOD_TYPES.CHRONO;
@@ -69,12 +93,17 @@ export class Food {
       this.currentType = FOOD_TYPES.NORMAL;
     }
 
-    // Update visuals based on type
-    this.coreMat.color.setHex(this.currentType.color);
-    this.coreMat.emissive.setHex(this.currentType.glowColor);
-    this.ringMat1.color.setHex(this.currentType.color);
-    this.ringMat2.color.setHex(this.currentType.glowColor);
+    // Update visuals based on crystal type
+    this.crystalMat.color.setHex(this.currentType.color);
+    this.crystalMat.emissive.setHex(this.currentType.color);
+    this.wireMesh.material.color.setHex(this.currentType.glowColor);
+    this.ringMat1.color.setHex(this.currentType.glowColor);
+    this.ringMat2.color.setHex(this.currentType.ringColor);
     this.light.color.setHex(this.currentType.color);
+
+    this.satellites.forEach(sat => {
+      sat.mesh.material.color.setHex(this.currentType.glowColor);
+    });
 
     // Find unoccupied cell
     const emptyCells = [];
@@ -87,7 +116,6 @@ export class Food {
     }
 
     if (emptyCells.length === 0) {
-      // Board full! Game won
       return false;
     }
 
@@ -109,22 +137,40 @@ export class Food {
     if (!this.group.visible) return;
 
     // Sinusoidal floating bob
-    const bob = Math.sin(time * 3.5) * 0.12;
-    this.coreMesh.position.y = bob;
+    const bob = Math.sin(time * 3.8) * 0.14;
+    this.crystalMesh.position.y = bob;
+    this.wireMesh.position.y = bob;
     this.ring1.position.y = bob;
     this.ring2.position.y = bob;
     this.light.position.y = bob;
 
-    // Pulsating emissive intensity & scale
-    const pulse = Math.sin(time * 6) * 0.2 + 1.0;
-    this.coreMesh.scale.set(pulse, pulse, pulse);
-    this.coreMat.emissiveIntensity = 1.2 + Math.sin(time * 8) * 0.4;
+    // Pulsating size & emissive intensity
+    const pulse = Math.sin(time * 7) * 0.18 + 1.0;
+    this.crystalMesh.scale.set(pulse, pulse, pulse);
+    this.wireMesh.scale.set(pulse * 1.08, pulse * 1.08, pulse * 1.08);
+    this.crystalMat.emissiveIntensity = 1.6 + Math.sin(time * 8) * 0.5;
+
+    // Continuous 3D rotation of crystal
+    this.crystalMesh.rotation.y = time * 2.2;
+    this.crystalMesh.rotation.x = time * 1.4;
+    this.wireMesh.rotation.y = -time * 2.0;
+    this.wireMesh.rotation.z = time * 1.6;
 
     // Gyroscopic spinning rings
-    this.ring1.rotation.x = time * 2.2;
-    this.ring1.rotation.y = time * 1.5;
+    this.ring1.rotation.x = time * 2.6;
+    this.ring1.rotation.y = time * 1.8;
 
-    this.ring2.rotation.y = -time * 2.0;
-    this.ring2.rotation.z = time * 1.8;
+    this.ring2.rotation.y = -time * 2.2;
+    this.ring2.rotation.z = time * 2.0;
+
+    // Orbiting satellites
+    this.satellites.forEach(sat => {
+      const angle = time * sat.speed + sat.angleOffset;
+      sat.mesh.position.set(
+        Math.cos(angle) * sat.radius,
+        bob + Math.sin(angle * 2) * 0.18 + sat.heightOffset,
+        Math.sin(angle) * sat.radius
+      );
+    });
   }
 }

@@ -186,16 +186,26 @@ export class UIManager {
     }
   }
 
+  bounceScore() {
+    if (this.hudScore) {
+      this.hudScore.classList.add('bump');
+      setTimeout(() => {
+        if (this.hudScore) this.hudScore.classList.remove('bump');
+      }, 160);
+    }
+  }
+
   updateHUD(scoreObj, activePowerup) {
     this.hudScore.textContent = scoreObj.getFormattedScore();
     this.hudHighScore.textContent = scoreObj.getFormattedHighScore();
     this.hudLength.textContent = scoreObj.length.toString().padStart(2, '0');
     this.hudSpeed.textContent = scoreObj.level.toString().padStart(2, '0');
 
-    // Combo meter
+    // Combo meter with dynamic shoutouts
     if (scoreObj.combo > 1 && scoreObj.comboTimer > 0) {
       this.hudComboContainer.classList.add('active');
-      this.hudComboVal.textContent = `x${scoreObj.combo}`;
+      const comboLabels = ['', '', 'x2 COMBO', 'x3 SUPER!', 'x4 HYPER!', 'x5 MAXIMUM!'];
+      this.hudComboVal.textContent = comboLabels[scoreObj.combo] || `x${scoreObj.combo}`;
       this.hudComboBar.style.width = `${scoreObj.getComboProgress() * 100}%`;
     } else {
       this.hudComboContainer.classList.remove('active');
