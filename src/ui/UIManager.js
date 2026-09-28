@@ -24,6 +24,7 @@ export class UIManager {
     this.hudHighScore = document.getElementById('hud-high-score');
     this.hudLength = document.getElementById('hud-length');
     this.hudSpeed = document.getElementById('hud-speed');
+    this.hudPhase = document.getElementById('hud-phase');
     this.hudComboContainer = document.getElementById('hud-combo-container');
     this.hudComboVal = document.getElementById('hud-combo-val');
     this.hudComboBar = document.getElementById('hud-combo-bar');
@@ -201,6 +202,14 @@ export class UIManager {
     this.hudLength.textContent = scoreObj.length.toString().padStart(2, '0');
     this.hudSpeed.textContent = scoreObj.level.toString().padStart(2, '0');
 
+    // Update current level phase
+    if (this.hudPhase) {
+      const curPhase = scoreObj.getCurrentPhase();
+      this.hudPhase.textContent = curPhase.name;
+      this.hudPhase.style.borderColor = curPhase.color;
+      this.hudPhase.style.color = curPhase.color;
+    }
+
     // Combo meter with dynamic shoutouts
     if (scoreObj.combo > 1 && scoreObj.comboTimer > 0) {
       this.hudComboContainer.classList.add('active');
@@ -219,6 +228,21 @@ export class UIManager {
     } else {
       this.powerupBanner.className = 'glass-panel';
     }
+  }
+
+  showMilestoneBanner(milestone) {
+    const banner = document.getElementById('milestone-banner');
+    const title = document.getElementById('milestone-title');
+    const subtitle = document.getElementById('milestone-subtitle');
+    if (!banner || !title) return;
+
+    title.textContent = `${milestone.name} ACTIVATED`;
+    if (subtitle) subtitle.textContent = milestone.subtitle || 'MAXIMUM VELOCITY UNLOCKED';
+    banner.classList.add('active');
+
+    setTimeout(() => {
+      if (banner) banner.classList.remove('active');
+    }, 2200);
   }
 
   showFloatingScore(points, combo, screenPos) {

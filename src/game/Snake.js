@@ -1,7 +1,7 @@
 /**
- * 3D Cyber Snake
- * Multi-colored glowing gradient, faceted aerodynamic cyber head with illuminated eyes,
- * traveling light pulses, continuous energy thruster trail, and death physics
+ * Advanced Futuristic 3D Cyber Snake
+ * Dynamic rainbow color-shifting body, unique cyber head with glowing visor eyes,
+ * traveling light wave pulses, translucent energy shield bubble, and thruster trails
  */
 
 import * as THREE from 'three';
@@ -15,17 +15,21 @@ export class Snake {
     this.snakeGroup = new THREE.Group();
     this.scene.add(this.snakeGroup);
 
-    // Logical grid positions
     this.body = [];
     this.prevBody = [];
     this.direction = DIRECTIONS.RIGHT;
     this.growPending = 0;
     this.isDead = false;
 
+    // Power-up states
+    this.hasShield = false;
+    this.isTurbo = false;
+
     // Segment 3D Meshes
     this.meshes = [];
     this.headMesh = null;
     this.headLight = null;
+    this.shieldMesh = null;
 
     // Scatter debris on death
     this.debris = [];
@@ -33,42 +37,53 @@ export class Snake {
     // Visual energy surge on food collect
     this.surgeTime = 0;
 
-    // Shared materials & geometries
     this.initGeometriesAndMaterials();
     this.reset();
   }
 
   initGeometriesAndMaterials() {
     // 1. Head mesh components
-    this.headGeo = new THREE.BoxGeometry(0.88, 0.58, 0.98);
+    this.headGeo = new THREE.BoxGeometry(0.90, 0.60, 1.02);
     this.headMat = new THREE.MeshStandardMaterial({
       color: 0x050c20,
       metalness: 0.95,
       roughness: 0.15,
       emissive: 0x004488,
-      emissiveIntensity: 0.6
+      emissiveIntensity: 0.7
     });
 
-    // Glowing visor eyes
+    // Visor LED eyes
     this.eyeGeo = new THREE.BoxGeometry(0.24, 0.12, 0.16);
     this.eyeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
 
     // Side cheek neon accents
-    this.finGeo = new THREE.BoxGeometry(0.08, 0.25, 0.6);
-    this.finMat = new THREE.MeshBasicMaterial({ color: 0xff0088 });
+    this.finGeo = new THREE.BoxGeometry(0.08, 0.28, 0.65);
+    this.finMat = new THREE.MeshBasicMaterial({ color: 0xff00aa });
 
     // 2. Body segment geometry
-    this.segmentGeo = new THREE.CylinderGeometry(0.40, 0.40, 0.68, 14);
+    this.segmentGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.70, 14);
     this.segmentGeo.rotateX(Math.PI / 2);
 
-    this.ringGeo = new THREE.TorusGeometry(0.43, 0.065, 8, 24);
+    this.ringGeo = new THREE.TorusGeometry(0.45, 0.07, 8, 24);
 
-    // Dark metallic chassis
     this.chassisMat = new THREE.MeshStandardMaterial({
-      color: 0x081026,
+      color: 0x071026,
       metalness: 0.92,
       roughness: 0.18
     });
+
+    // 3. Aegis Shield Bubble (translucent glowing sphere)
+    const shieldGeo = new THREE.SphereGeometry(0.95, 16, 16);
+    const shieldMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff88,
+      transparent: true,
+      opacity: 0.35,
+      wireframe: true,
+      blending: THREE.AdditiveBlending
+    });
+    this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+    this.shieldMesh.visible = false;
+    this.snakeGroup.add(this.shieldMesh);
   }
 
   gridToWorld(gx, gz) {
@@ -84,6 +99,10 @@ export class Snake {
     this.direction = initialDir;
     this.growPending = 0;
     this.surgeTime = 0;
+    this.hasShield = false;
+    this.isTurbo = false;
+
+    if (this.shieldMesh) this.shieldMesh.visible = false;
 
     this.clearMeshes();
     this.clearDebris();
@@ -101,8 +120,12 @@ export class Snake {
   }
 
   clearMeshes() {
-    while (this.snakeGroup.children.length > 0) {
-      this.snakeGroup.remove(this.snakeGroup.children[0]);
+    // Keep shieldMesh in group, remove others
+    for (let i = this.snakeGroup.children.length - 1; i >= 0; i--) {
+      const child = this.snakeGroup.children[i];
+      if (child !== this.shieldMesh) {
+        this.snakeGroup.remove(child);
+      }
     }
     this.meshes = [];
     this.headMesh = null;
@@ -121,8 +144,8 @@ export class Snake {
     const mainHead = new THREE.Mesh(this.headGeo, this.headMat);
     group.add(mainHead);
 
-    // Aerodynamic nose wedge
-    const noseGeo = new THREE.ConeGeometry(0.38, 0.52, 4);
+    // Aerodynamic tapered nose cone
+    const noseGeo = new THREE.ConeGeometry(0.40, 0.56, 4);
     noseGeo.rotateX(-Math.PI / 2);
     noseGeo.rotateY(Math.PI / 4);
     const noseMat = new THREE.MeshStandardMaterial({
@@ -130,72 +153,50 @@ export class Snake {
       metalness: 0.95,
       roughness: 0.15,
       emissive: 0x00f0ff,
-      emissiveIntensity: 0.9
+      emissiveIntensity: 1.0
     });
     const nose = new THREE.Mesh(noseGeo, noseMat);
-    nose.position.z = -0.65;
+    nose.position.z = -0.70;
     group.add(nose);
 
-    // Dual glowing neon visor eyes (intense cyan)
+    // Dual glowing neon eyes
     const leftEye = new THREE.Mesh(this.eyeGeo, this.eyeMat);
-    leftEye.position.set(-0.28, 0.14, -0.48);
+    leftEye.position.set(-0.28, 0.14, -0.52);
     group.add(leftEye);
 
     const rightEye = new THREE.Mesh(this.eyeGeo, this.eyeMat);
-    rightEye.position.set(0.28, 0.14, -0.48);
+    rightEye.position.set(0.28, 0.14, -0.52);
     group.add(rightEye);
 
-    // Neon side fins
+    // Side fin accents
     const leftFin = new THREE.Mesh(this.finGeo, this.finMat);
-    leftFin.position.set(-0.46, 0.05, 0.05);
+    leftFin.position.set(-0.48, 0.06, 0.05);
     group.add(leftFin);
 
     const rightFin = new THREE.Mesh(this.finGeo, this.finMat);
-    rightFin.position.set(0.46, 0.05, 0.05);
+    rightFin.position.set(0.48, 0.06, 0.05);
     group.add(rightFin);
 
-    // Dynamic headlight casting bright pool ahead of the snake
-    this.headLight = new THREE.PointLight(0x00f0ff, 3.8, 8, 2);
-    this.headLight.position.set(0, 0.3, -0.7);
+    // Dynamic headlight casting pool ahead
+    this.headLight = new THREE.PointLight(0x00f0ff, 4.0, 9, 2);
+    this.headLight.position.set(0, 0.35, -0.75);
     group.add(this.headLight);
 
     return group;
   }
 
-  /**
-   * Vibrant multi-stop gradient color calculation:
-   * Cyan (0%) -> Electric Blue (30%) -> Purple (65%) -> Hot Magenta (100%)
-   */
-  getSegmentColor(index, total) {
-    const p = Math.min(1.0, index / Math.max(1, total - 1));
-    const c1 = new THREE.Color(0x00f0ff); // Cyan
-    const c2 = new THREE.Color(0x0066ff); // Electric blue
-    const c3 = new THREE.Color(0x9d00ff); // Purple
-    const c4 = new THREE.Color(0xff0088); // Hot magenta
-
-    if (p < 0.33) {
-      return c1.lerp(c2, p / 0.33);
-    } else if (p < 0.66) {
-      return c2.lerp(c3, (p - 0.33) / 0.33);
-    } else {
-      return c3.lerp(c4, (p - 0.66) / 0.34);
-    }
-  }
-
-  createSegmentMesh(index, totalSegments) {
+  createSegmentMesh(index) {
     const group = new THREE.Group();
 
     // Chassis core
     const core = new THREE.Mesh(this.segmentGeo, this.chassisMat);
     group.add(core);
 
-    // Glowing neon ring with vibrant color gradient
-    const ringColor = this.getSegmentColor(index, totalSegments);
-
+    // Dynamic glowing neon ring with unique material per segment
     const ringMat = new THREE.MeshStandardMaterial({
-      color: ringColor,
-      emissive: ringColor,
-      emissiveIntensity: 1.2,
+      color: 0x00f0ff,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 1.3,
       metalness: 0.85,
       roughness: 0.15
     });
@@ -203,7 +204,7 @@ export class Snake {
     const ring = new THREE.Mesh(this.ringGeo, ringMat);
     group.add(ring);
 
-    return { group, ringMat, core, baseColor: ringColor };
+    return { group, ringMat, core };
   }
 
   buildMeshes() {
@@ -218,7 +219,7 @@ export class Snake {
         this.snakeGroup.add(this.headMesh);
         this.meshes.push(this.headMesh);
       } else {
-        const seg = this.createSegmentMesh(i, this.body.length);
+        const seg = this.createSegmentMesh(i);
         const worldPos = this.gridToWorld(this.body[i].x, this.body[i].z);
         seg.group.position.set(worldPos.x, worldPos.y, worldPos.z);
         this.snakeGroup.add(seg.group);
@@ -232,7 +233,18 @@ export class Snake {
   }
 
   triggerSurge() {
-    this.surgeTime = 0.5; // Half-second energy surge
+    this.surgeTime = 0.5;
+  }
+
+  setShield(active) {
+    this.hasShield = active;
+    if (this.shieldMesh) {
+      this.shieldMesh.visible = active;
+    }
+  }
+
+  setTurbo(active) {
+    this.isTurbo = active;
   }
 
   tick(nextDir) {
@@ -254,7 +266,7 @@ export class Snake {
     if (this.growPending > 0) {
       this.growPending--;
       const newIdx = this.body.length - 1;
-      const seg = this.createSegmentMesh(newIdx, this.body.length);
+      const seg = this.createSegmentMesh(newIdx);
       const tailPos = this.gridToWorld(this.body[newIdx].x, this.body[newIdx].z);
       seg.group.position.set(tailPos.x, tailPos.y, tailPos.z);
       this.snakeGroup.add(seg.group);
@@ -309,7 +321,7 @@ export class Snake {
       this.scene.add(clone);
 
       const angle = Math.random() * Math.PI * 2;
-      const force = Math.random() * 5 + 3;
+      const force = Math.random() * 5 + 3.5;
 
       this.debris.push({
         mesh: clone,
@@ -359,8 +371,11 @@ export class Snake {
       this.surgeTime -= deltaTime;
     }
 
-    const surgeGlow = Math.max(0, this.surgeTime * 3.0);
-    const lengthGlow = Math.min(0.5, (this.body.length - 3) * 0.02);
+    const surgeGlow = Math.max(0, this.surgeTime * 3.5);
+    const lengthGlow = Math.min(0.6, (this.body.length - 3) * 0.025);
+
+    // Global shifting color cycle
+    const baseHue = (time * 30) % 360;
 
     // Smoothly interpolate visual positions
     for (let i = 0; i < this.body.length && i < this.meshes.length; i++) {
@@ -376,7 +391,7 @@ export class Snake {
         curMesh.position.x = THREE.MathUtils.lerp(pPos.x, cPos.x, alpha);
         curMesh.position.z = THREE.MathUtils.lerp(pPos.z, cPos.z, alpha);
 
-        // Organic light breathing wave traveling down the body
+        // Gentle breathing pulse down the body
         const wave = Math.sin(time * 7 - i * 0.45);
         curMesh.position.y = pPos.y + wave * 0.04;
 
@@ -387,9 +402,15 @@ export class Snake {
           while (diff > Math.PI) diff -= Math.PI * 2;
           curMesh.rotation.y += diff * Math.min(1.0, deltaTime * 18);
 
-          // Headlight pulse
           if (this.headLight) {
-            this.headLight.intensity = 3.5 + wave * 0.6 + surgeGlow;
+            this.headLight.intensity = (this.isTurbo ? 5.5 : 3.8) + wave * 0.6 + surgeGlow;
+          }
+
+          // Follow shield bubble to head position
+          if (this.shieldMesh && this.shieldMesh.visible) {
+            this.shieldMesh.position.copy(curMesh.position);
+            this.shieldMesh.rotation.y = time * 2;
+            this.shieldMesh.rotation.x = Math.sin(time) * 0.3;
           }
         } else {
           // Orient segment
@@ -402,23 +423,32 @@ export class Snake {
           else if (segDirZ === 1) segAngle = Math.PI;
           curMesh.rotation.y = segAngle;
 
-          // Segment emissive light wave pulse
+          // DYNAMIC RAINBOW COLOR SHIFTING ALONG THE BODY
           const seg = this.meshes[i];
           if (seg && seg.ringMat) {
-            seg.ringMat.emissiveIntensity = 1.0 + wave * 0.4 + surgeGlow + lengthGlow;
+            const segHue = (baseHue + i * 16) % 360;
+            seg.ringMat.color.setHSL(segHue / 360, 1.0, 0.55);
+            seg.ringMat.emissive.setHSL(segHue / 360, 1.0, 0.55);
+            seg.ringMat.emissiveIntensity = 1.1 + wave * 0.35 + surgeGlow + lengthGlow;
           }
         }
       }
     }
 
-    // Continuous glowing thruster tail trail
+    // Continuous glowing thruster tail trail with matching rainbow color
     if (this.body.length > 0 && this.particles) {
       const tailIdx = this.meshes.length - 1;
       const tailMesh = this.meshes[tailIdx];
       const tailPos = tailMesh ? (tailMesh.group ? tailMesh.group.position : tailMesh.position) : null;
       if (tailPos) {
-        const tailColor = (tailIdx % 2 === 0) ? PALETTE.HOT_PINK : PALETTE.CYAN;
-        this.particles.spawnTrailMote(tailPos, tailColor);
+        const trailHue = (baseHue + tailIdx * 16) % 360;
+        const trailColor = new THREE.Color().setHSL(trailHue / 360, 1.0, 0.55).getHex();
+        this.particles.spawnTrailMote(tailPos, trailColor);
+
+        // Extra turbo sparks if turbo is active
+        if (this.isTurbo) {
+          this.particles.spawnTrailMote(tailPos, 0xffea00);
+        }
       }
     }
   }

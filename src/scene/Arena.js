@@ -1,5 +1,7 @@
 /**
- * Floating Sci-Fi Arena, Vibrant Cyberpunk Floor, Animated Grid, Cosmic Nebulae & Starfield
+ * Floating Sci-Fi Arena with Living Animated Rainbow Floor
+ * Soft flowing energy field, crystal-clear center visibility, no harsh stripes,
+ * and massive cosmic universe with distant rotating neon megastructures
  */
 
 import * as THREE from 'three';
@@ -17,17 +19,20 @@ export class Arena {
     this.wallMaterials = [];
     this.pylonLights = [];
     this.stars = null;
-    this.nebulae = [];
+    this.megastructures = [];
+    this.shockwaves = [];
 
     this.pulseTime = 0;
     this.warningIntensity = 0;
     this.arenaEnergy = 1.0;
+    this.isOverdrive = false;
 
     this.initPlatform();
     this.initGridFloor();
     this.initPerimeterAura();
     this.initLaserWalls();
     this.initCornerPylons();
+    this.initMegastructures();
     this.initCosmicSky();
   }
 
@@ -35,49 +40,47 @@ export class Arena {
     const size = GRID_SIZE * CELL_SIZE;
     const thickness = 1.4;
 
-    // Platform base (dark futuristic metallic chassis with beveled cyber edging)
+    // Platform base chassis (dark metallic futuristic alloy)
     const baseGeo = new THREE.BoxGeometry(size + 0.8, thickness, size + 0.8);
     const baseMat = new THREE.MeshStandardMaterial({
-      color: 0x050818,
-      metalness: 0.9,
-      roughness: 0.25
+      color: 0x050714,
+      metalness: 0.92,
+      roughness: 0.22
     });
     const platformBase = new THREE.Mesh(baseGeo, baseMat);
     platformBase.position.y = -thickness / 2;
     this.arenaGroup.add(platformBase);
 
-    // Glowing dual-tone neon perimeter bezel (Cyan & Hot Pink)
+    // Glowing neon border bezel
     const rimGeo = new THREE.BoxGeometry(size + 1.1, 0.16, size + 1.1);
-    const rimMat = new THREE.MeshStandardMaterial({
-      color: 0x0a1030,
+    this.rimMat = new THREE.MeshStandardMaterial({
+      color: 0x090e24,
       emissive: 0x00f0ff,
-      emissiveIntensity: 0.8,
+      emissiveIntensity: 0.9,
       metalness: 0.95,
       roughness: 0.15
     });
-    this.rimMesh = new THREE.Mesh(rimGeo, rimMat);
+    this.rimMesh = new THREE.Mesh(rimGeo, this.rimMat);
     this.rimMesh.position.y = 0.02;
     this.arenaGroup.add(this.rimMesh);
 
-    // Sub-platform floating exhaust glow (glowing cyber reactor beneath the arena)
+    // Floating reactor core underneath
     const engineGeo = new THREE.CylinderGeometry(size * 0.42, size * 0.48, 0.7, 24);
-    const engineMat = new THREE.MeshStandardMaterial({
+    this.engineMat = new THREE.MeshStandardMaterial({
       color: 0x020410,
       emissive: 0x7b1fa2,
-      emissiveIntensity: 1.2,
+      emissiveIntensity: 1.4,
       metalness: 0.9
     });
-    const engine = new THREE.Mesh(engineGeo, engineMat);
+    const engine = new THREE.Mesh(engineGeo, this.engineMat);
     engine.position.y = -thickness - 0.35;
     this.arenaGroup.add(engine);
 
-    // Ion reactor glow ring
+    // Ion thruster ring
     const thrusterRingGeo = new THREE.TorusGeometry(size * 0.35, 0.12, 12, 32);
     thrusterRingGeo.rotateX(Math.PI / 2);
-    const thrusterMat = new THREE.MeshBasicMaterial({
-      color: 0x00f0ff
-    });
-    const thruster = new THREE.Mesh(thrusterRingGeo, thrusterMat);
+    this.thrusterMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const thruster = new THREE.Mesh(thrusterRingGeo, this.thrusterMat);
     thruster.position.y = -thickness - 0.7;
     this.arenaGroup.add(thruster);
   }
@@ -96,8 +99,8 @@ export class Arena {
     const floorGeo = new THREE.PlaneGeometry(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
     this.floorMat = new THREE.MeshStandardMaterial({
       map: this.gridTexture,
-      roughness: 0.16, // High gloss for beautiful reflections!
-      metalness: 0.82,
+      roughness: 0.16,
+      metalness: 0.85,
       transparent: false
     });
 
@@ -106,62 +109,83 @@ export class Arena {
     floor.position.y = 0.01;
     this.arenaGroup.add(floor);
 
-    this.drawGrid(0);
+    this.drawLivingRainbow(0);
   }
 
   initPerimeterAura() {
-    // Soft outer neon glow aura framing the arena
     const size = GRID_SIZE * CELL_SIZE + 0.4;
-    const auraGeo = new THREE.RingGeometry(size / 2 - 0.2, size / 2 + 1.2, 4, 1);
+    const auraGeo = new THREE.RingGeometry(size / 2 - 0.2, size / 2 + 1.4, 4, 1);
     auraGeo.rotateX(-Math.PI / 2);
     auraGeo.rotateY(Math.PI / 4);
 
-    const auraMat = new THREE.MeshBasicMaterial({
+    this.auraMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.25,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
-    this.auraMesh = new THREE.Mesh(auraGeo, auraMat);
+    this.auraMesh = new THREE.Mesh(auraGeo, this.auraMat);
     this.auraMesh.position.y = 0.04;
     this.arenaGroup.add(this.auraMesh);
   }
 
   /**
-   * Vibrant Cyberpunk Ground Texture Generation:
-   * Deep Purple -> Electric Blue -> Radiant Cyan Gradient
-   * Pulsing neon grid lines, circuit nodes, and traveling energy pulses
+   * Living Animated Rainbow Floor
+   * Smooth, flowing color transitions without harsh stripes or distracting lines
+   * Center area maintains deep contrast so the snake and food POP brilliantly!
    */
-  drawGrid(time) {
+  drawLivingRainbow(time) {
     const ctx = this.gridCtx;
     const w = this.gridCanvas.width;
     const h = this.gridCanvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
     const cells = GRID_SIZE;
     const step = w / cells;
 
-    // 1. Vibrant Cyberpunk Multi-stop Gradient Background
-    // Deep Indigo/Purple -> Electric Blue -> Radiant Cyan accents
-    const bgGrad = ctx.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, w * 0.72);
-    bgGrad.addColorStop(0, '#1c0038');     // Vivid deep royal purple core
-    bgGrad.addColorStop(0.35, '#120042');  // Electric indigo
-    bgGrad.addColorStop(0.70, '#001a5e');  // Deep electric blue
-    bgGrad.addColorStop(1.0, '#000c28');   // Cyber navy edge
-    ctx.fillStyle = bgGrad;
+    // 1. Base Dark Cyber Canvas
+    ctx.fillStyle = '#060916';
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle diagonal energy sheen
-    const sheenGrad = ctx.createLinearGradient(0, 0, w, h);
-    sheenGrad.addColorStop(0, 'rgba(157, 0, 255, 0.18)'); // Purple glow
-    sheenGrad.addColorStop(0.5, 'rgba(0, 102, 255, 0.12)'); // Blue glow
-    sheenGrad.addColorStop(1, 'rgba(0, 240, 255, 0.18)'); // Cyan glow
-    ctx.fillStyle = sheenGrad;
-    ctx.fillRect(0, 0, w, h);
+    // 2. Flowing Living Rainbow Radial & Angular Energy Field
+    // Cycle smoothly through HSL spectrum: Cyan -> Blue -> Purple -> Pink -> Magenta -> Red -> Orange -> Yellow -> Green -> Cyan
+    const baseHue = (time * 18) % 360;
 
-    // 2. Soft Under-glow Grid Lines
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.14)';
+    // Multi-ring flowing rainbow ripples
+    const maxRadius = Math.sqrt(cx * cx + cy * cy);
+    const ringCount = 5;
+
+    for (let r = ringCount; r >= 1; r--) {
+      const radius = (r / ringCount) * maxRadius;
+      const ringHue = (baseHue + r * 45) % 360;
+
+      const radGrad = ctx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, radius);
+      radGrad.addColorStop(0, `hsla(${ringHue}, 85%, 16%, 0.10)`);
+      radGrad.addColorStop(0.7, `hsla(${(ringHue + 30) % 360}, 90%, 26%, 0.25)`);
+      radGrad.addColorStop(1.0, `hsla(${(ringHue + 60) % 360}, 95%, 45%, 0.05)`);
+
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Clear Center Playfield Zone for 100% Snake Visibility
+    const centerGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, w * 0.38);
+    centerGrad.addColorStop(0, 'rgba(4, 7, 18, 0.88)');
+    centerGrad.addColorStop(0.65, 'rgba(8, 14, 32, 0.65)');
+    centerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = centerGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, w * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Subtle, Clean Minimal Grid Lines (NO harsh stripes!)
+    ctx.lineWidth = 1.0;
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.20)';
+
     for (let i = 0; i <= cells; i++) {
       const pos = i * step;
       ctx.beginPath();
@@ -175,72 +199,28 @@ export class Arena {
       ctx.stroke();
     }
 
-    // 3. Crisp Core Neon Grid Lines (Alternating Cyan & Violet)
-    for (let i = 0; i <= cells; i++) {
-      const pos = i * step;
-      ctx.lineWidth = (i % 5 === 0) ? 2.5 : 1.4;
-      ctx.strokeStyle = (i % 2 === 0) ? 'rgba(0, 240, 255, 0.65)' : 'rgba(180, 0, 255, 0.50)';
-
-      ctx.beginPath();
-      ctx.moveTo(pos, 0);
-      ctx.lineTo(pos, h);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(0, pos);
-      ctx.lineTo(w, pos);
-      ctx.stroke();
-    }
-
-    // 4. Multi-directional Animated Energy Waves
-    // Horizontal cyan pulse
-    const wave1 = (time * 0.9) % 1.0;
-    const waveX = wave1 * w;
-    const pulseGradX = ctx.createLinearGradient(waveX - 90, 0, waveX + 90, 0);
-    pulseGradX.addColorStop(0, 'rgba(0, 240, 255, 0)');
-    pulseGradX.addColorStop(0.5, 'rgba(0, 240, 255, 0.75)');
-    pulseGradX.addColorStop(1, 'rgba(0, 240, 255, 0)');
-    ctx.fillStyle = pulseGradX;
-    ctx.fillRect(waveX - 90, 0, 180, h);
-
-    // Vertical magenta pulse
-    const wave2 = (time * 0.65 + 0.4) % 1.0;
-    const waveY = wave2 * h;
-    const pulseGradY = ctx.createLinearGradient(0, waveY - 80, 0, waveY + 80);
-    pulseGradY.addColorStop(0, 'rgba(255, 0, 160, 0)');
-    pulseGradY.addColorStop(0.5, 'rgba(255, 0, 160, 0.65)');
-    pulseGradY.addColorStop(1, 'rgba(255, 0, 160, 0)');
-    ctx.fillStyle = pulseGradY;
-    ctx.fillRect(0, waveY - 80, w, 160);
-
-    // 5. Glowing Intersection Circuit Dots & Crosshairs
+    // 5. Subtle Intersection Dots (Clean spatial references)
     for (let i = 0; i <= cells; i++) {
       for (let j = 0; j <= cells; j++) {
-        const cx = i * step;
-        const cy = j * step;
-
-        if (i % 2 === 0 && j % 2 === 0) {
-          ctx.fillStyle = 'rgba(0, 240, 255, 0.6)';
-          ctx.beginPath();
-          ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.fillStyle = 'rgba(255, 0, 128, 0.35)';
-          ctx.beginPath();
-          ctx.arc(cx, cy, 1.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        const px = i * step;
+        const py = j * step;
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
+        ctx.beginPath();
+        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
-    // 6. Perimeter Glowing Border Aura
-    const borderGrad = ctx.createRadialGradient(w / 2, h / 2, w * 0.42, w / 2, h / 2, w * 0.50);
-    borderGrad.addColorStop(0, 'rgba(0, 240, 255, 0)');
-    borderGrad.addColorStop(0.85, 'rgba(0, 240, 255, 0.45)');
-    borderGrad.addColorStop(1.0, 'rgba(255, 0, 128, 0.8)');
-    ctx.lineWidth = 10;
+    // 6. Glowing Rainbow Edge Aura
+    const borderHue = (baseHue + 120) % 360;
+    const borderGrad = ctx.createLinearGradient(0, 0, w, h);
+    borderGrad.addColorStop(0, `hsla(${baseHue}, 100%, 55%, 0.85)`);
+    borderGrad.addColorStop(0.5, `hsla(${(baseHue + 90) % 360}, 100%, 60%, 0.85)`);
+    borderGrad.addColorStop(1, `hsla(${borderHue}, 100%, 55%, 0.85)`);
+
+    ctx.lineWidth = 7;
     ctx.strokeStyle = borderGrad;
-    ctx.strokeRect(5, 5, w - 10, h - 10);
+    ctx.strokeRect(4, 4, w - 8, h - 8);
 
     this.gridTexture.needsUpdate = true;
   }
@@ -256,7 +236,7 @@ export class Arena {
         emissive: glowHex,
         emissiveIntensity: 1.1,
         transparent: true,
-        opacity: 0.38,
+        opacity: 0.36,
         side: THREE.DoubleSide,
         depthWrite: false,
         blending: THREE.AdditiveBlending
@@ -266,10 +246,10 @@ export class Arena {
     };
 
     const wallDefs = [
-      { geo: new THREE.PlaneGeometry(size, wallHeight), pos: [0, wallHeight / 2, -half], rot: [0, 0, 0], col: 0x00f0ff, glow: 0x00aaff },
+      { geo: new THREE.PlaneGeometry(size, wallHeight), pos: [0, wallHeight / 2, -half], rot: [0, 0, 0], col: 0x00f0ff, glow: 0x0088ff },
       { geo: new THREE.PlaneGeometry(size, wallHeight), pos: [0, wallHeight / 2, half], rot: [0, Math.PI, 0], col: 0xff0088, glow: 0xff00aa },
       { geo: new THREE.PlaneGeometry(size, wallHeight), pos: [-half, wallHeight / 2, 0], rot: [0, Math.PI / 2, 0], col: 0x9d00ff, glow: 0x6e00ff },
-      { geo: new THREE.PlaneGeometry(size, wallHeight), pos: [half, wallHeight / 2, 0], rot: [0, -Math.PI / 2, 0], col: 0x00f0ff, glow: 0x00e5ff }
+      { geo: new THREE.PlaneGeometry(size, wallHeight), pos: [half, wallHeight / 2, 0], rot: [0, -Math.PI / 2, 0], col: 0x00ff88, glow: 0x00ffaa }
     ];
 
     wallDefs.forEach((def) => {
@@ -308,10 +288,10 @@ export class Arena {
   initCornerPylons() {
     const half = ARENA_HALF_SIZE;
     const corners = [
-      { pos: [-half, -half], color: 0x00f0ff, name: 'cyan' },
-      { pos: [half, -half], color: 0xff0088, name: 'pink' },
-      { pos: [half, half], color: 0xffea00, name: 'yellow' },
-      { pos: [-half, half], color: 0x9d00ff, name: 'purple' }
+      { pos: [-half, -half], color: 0x00f0ff },
+      { pos: [half, -half], color: 0xff0088 },
+      { pos: [half, half], color: 0xffea00 },
+      { pos: [-half, half], color: 0x00ff88 }
     ];
 
     const pylonGeo = new THREE.CylinderGeometry(0.22, 0.38, 1.4, 8);
@@ -330,11 +310,10 @@ export class Arena {
       const base = new THREE.Mesh(pylonGeo, pylonMat);
       group.add(base);
 
-      // Rotating faceted beacon crystal
       const crystalMat = new THREE.MeshStandardMaterial({
         color: corner.color,
         emissive: corner.color,
-        emissiveIntensity: 1.5,
+        emissiveIntensity: 1.6,
         roughness: 0.1,
         metalness: 0.8
       });
@@ -342,8 +321,7 @@ export class Arena {
       crystal.position.y = 0.95;
       group.add(crystal);
 
-      // Vertical neon light beam
-      const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, 6, 8);
+      const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, 7, 8);
       const beamMat = new THREE.MeshBasicMaterial({
         color: corner.color,
         transparent: true,
@@ -351,7 +329,7 @@ export class Arena {
         blending: THREE.AdditiveBlending
       });
       const beam = new THREE.Mesh(beamGeo, beamMat);
-      beam.position.y = 3.9;
+      beam.position.y = 4.4;
       group.add(beam);
 
       this.pylonLights.push({ crystal, beam, color: corner.color });
@@ -359,29 +337,67 @@ export class Arena {
     });
   }
 
+  /**
+   * Distant Megastructures giving the world a massive, colossal scale!
+   */
+  initMegastructures() {
+    // 1. Massive rotating orbital neon rings far outside the arena
+    const ringColors = [0x00f0ff, 0xff00aa, 0x9d00ff, 0xffea00];
+    ringColors.forEach((col, idx) => {
+      const ringGeo = new THREE.TorusGeometry(32 + idx * 8, 0.35, 12, 64);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: col,
+        transparent: true,
+        opacity: 0.28,
+        wireframe: (idx % 2 === 1)
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.set(0, -6 + idx * 4, 0);
+      ring.rotation.x = Math.PI / 4 + idx * 0.3;
+      ring.rotation.y = idx * 0.5;
+      this.scene.add(ring);
+      this.megastructures.push({ mesh: ring, rotSpeed: 0.08 * (idx % 2 === 0 ? 1 : -1) });
+    });
+
+    // 2. Distant Cyber Monoliths silhouetted in deep space
+    for (let i = 0; i < 8; i++) {
+      const mGeo = new THREE.BoxGeometry(3, 35, 3);
+      const mMat = new THREE.MeshStandardMaterial({
+        color: 0x050818,
+        emissive: (i % 2 === 0 ? 0x002244 : 0x220033),
+        metalness: 0.95,
+        roughness: 0.2
+      });
+      const monolith = new THREE.Mesh(mGeo, mMat);
+      const angle = (i / 8) * Math.PI * 2;
+      const dist = 42 + (i % 3) * 6;
+      monolith.position.set(Math.cos(angle) * dist, -12, Math.sin(angle) * dist);
+      this.scene.add(monolith);
+    }
+  }
+
   initCosmicSky() {
-    // 1. Multi-colored starry galaxy
-    const starCount = 2200;
+    const starCount = 2600;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
 
     const palette = [
-      new THREE.Color(0x00f0ff), // Cyan
-      new THREE.Color(0xff00aa), // Hot pink
-      new THREE.Color(0xffea00), // Electric yellow
-      new THREE.Color(0xaa44ff), // Lavender
-      new THREE.Color(0xffffff), // Diamond white
-      new THREE.Color(0x3388ff)  // Royal blue
+      new THREE.Color(0x00f0ff),
+      new THREE.Color(0xff00aa),
+      new THREE.Color(0xffea00),
+      new THREE.Color(0x00ff88),
+      new THREE.Color(0xaa44ff),
+      new THREE.Color(0xffffff)
     ];
 
     for (let i = 0; i < starCount; i++) {
-      const radius = 65 + Math.random() * 95;
+      const radius = 70 + Math.random() * 110;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(Math.random() * 2 - 1);
 
       positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = Math.max(4, radius * Math.cos(phi));
+      positions[i * 3 + 1] = Math.max(5, radius * Math.cos(phi));
       positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
 
       const picked = palette[Math.floor(Math.random() * palette.length)];
@@ -394,78 +410,95 @@ export class Arena {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const starMaterial = new THREE.PointsMaterial({
-      size: 0.85,
+      size: 0.9,
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.92,
       blending: THREE.AdditiveBlending
     });
 
     this.stars = new THREE.Points(geometry, starMaterial);
     this.scene.add(this.stars);
-
-    // 2. Distant Cosmic Nebulae Clouds (glowing purple and cyan gas clouds)
-    const nebulaeColors = [0x9d00ff, 0x00f0ff, 0xff0088];
-    nebulaeColors.forEach((col, idx) => {
-      const nGeo = new THREE.SphereGeometry(18, 16, 16);
-      const nMat = new THREE.MeshBasicMaterial({
-        color: col,
-        transparent: true,
-        opacity: 0.035,
-        wireframe: true,
-        blending: THREE.AdditiveBlending
-      });
-      const nebula = new THREE.Mesh(nGeo, nMat);
-      nebula.position.set(
-        Math.cos(idx * 2.1) * 60,
-        15 + idx * 8,
-        Math.sin(idx * 2.1) * 60
-      );
-      this.scene.add(nebula);
-      this.nebulae.push(nebula);
-    });
   }
 
   setWarning(intensity) {
     this.warningIntensity = THREE.MathUtils.clamp(intensity, 0, 1);
   }
 
-  setIntensity(level = 1) {
+  setIntensity(level = 1, isOverdrive = false) {
     this.arenaEnergy = 1.0 + (level - 1) * 0.15;
+    this.isOverdrive = isOverdrive;
+  }
+
+  triggerShockwave(pos = { x: 0, z: 0 }, colorHex = 0x00f0ff) {
+    const geo = new THREE.RingGeometry(0.2, 0.7, 32);
+    geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({
+      color: colorHex,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(pos.x, 0.08, pos.z);
+    this.scene.add(mesh);
+    this.shockwaves.push({ mesh, mat, geo, radius: 0.4, maxRadius: 14, opacity: 0.9, speed: 20 });
   }
 
   update(time, deltaTime) {
-    // Redraw grid pulse at smooth 25 FPS
+    // Redraw smooth living rainbow floor at 30 FPS
     this.pulseTime += deltaTime;
-    if (this.pulseTime > 0.04) {
-      this.drawGrid(time);
+    const updateRate = this.isOverdrive ? 0.025 : 0.033;
+    if (this.pulseTime > updateRate) {
+      this.drawLivingRainbow(time * (this.isOverdrive ? 1.6 : 1.0));
       this.pulseTime = 0;
     }
 
-    // Slowly rotate celestial starfield & nebulae
-    if (this.stars) {
-      this.stars.rotation.y = time * 0.02;
+    // Animate floor shockwaves
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const sw = this.shockwaves[i];
+      sw.radius += sw.speed * deltaTime;
+      const progress = sw.radius / sw.maxRadius;
+      sw.mesh.scale.set(sw.radius, 1, sw.radius);
+      sw.mat.opacity = Math.max(0, sw.opacity * (1.0 - progress));
+      if (progress >= 1 || sw.mat.opacity <= 0.01) {
+        this.scene.remove(sw.mesh);
+        sw.mat.dispose();
+        sw.geo.dispose();
+        this.shockwaves.splice(i, 1);
+      }
     }
-    this.nebulae.forEach((neb, i) => {
-      neb.rotation.y = time * 0.03 * (i % 2 === 0 ? 1 : -1);
-      neb.rotation.x = Math.sin(time * 0.2 + i) * 0.1;
+
+    // Slowly rotate celestial starfield
+    if (this.stars) {
+      this.stars.rotation.y = time * 0.025;
+    }
+
+    // Animate distant rotating megastructure rings
+    this.megastructures.forEach((ms) => {
+      ms.mesh.rotation.z += ms.rotSpeed * deltaTime;
+      ms.mesh.rotation.y += ms.rotSpeed * 0.5 * deltaTime;
     });
 
-    // Rotate corner beacon crystals & beams
+    // Animate corner beacon crystals & vertical laser beams
     this.pylonLights.forEach((pylon, idx) => {
-      pylon.crystal.rotation.y = time * 2.5 + idx;
+      pylon.crystal.rotation.y = time * 2.8 + idx;
       pylon.crystal.rotation.x = Math.sin(time * 1.5 + idx) * 0.4;
       pylon.beam.scale.x = Math.sin(time * 4 + idx) * 0.3 + 1.0;
       pylon.beam.scale.z = pylon.beam.scale.x;
     });
 
-    // Animate perimeter aura
+    // Animate outer aura
     if (this.auraMesh) {
-      this.auraMesh.material.opacity = 0.20 + Math.sin(time * 4) * 0.08;
+      const hue = (time * 25) % 360;
+      this.auraMat.color.setHSL(hue / 360, 1.0, 0.5);
+      this.auraMat.opacity = 0.22 + Math.sin(time * 4) * 0.08;
     }
 
     // Animate walls & warning pulse
-    const baseOpacity = 0.35 + Math.sin(time * 3.5) * 0.1;
+    const baseOpacity = 0.35 + Math.sin(time * 3.5) * 0.08;
     this.wallMaterials.forEach((mat) => {
       if (this.warningIntensity > 0.1) {
         mat.color.setHex(PALETTE.RED_ALERT);

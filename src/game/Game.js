@@ -135,14 +135,12 @@ export class Game {
     let rate = SPEED_CONFIG.INITIAL_TICK_RATE - (this.score.level - 1) * SPEED_CONFIG.SPEED_STEP;
     rate = Math.max(SPEED_CONFIG.MIN_TICK_RATE, rate);
 
-    // Chrono powerup slows down game time
-    if (this.activePowerup && this.activePowerup.type === 'CHRONO') {
-      rate *= 1.55;
-    }
-
-    // Hyper powerup slightly accelerates
-    if (this.activePowerup && this.activePowerup.type === 'HYPER') {
-      rate *= 0.88;
+    if (this.activePowerup) {
+      if (this.activePowerup.type === 'TIME') {
+        rate *= 1.55; // Chrono slow down
+      } else if (this.activePowerup.type === 'SPEED') {
+        rate *= 0.65; // Turbo surge boost
+      }
     }
 
     return rate;
@@ -156,8 +154,36 @@ export class Game {
       const nextDir = this.input.nextDirection();
       this.snake.tick(nextDir);
 
-      // Check wall collision
-      if (this.snake.checkWallCollision() || this.snake.checkSelfCollision()) {
+      // Check collision
+      const hitWall = this.snake.checkWallCollision();
+      const hitSelf = this.snake.checkSelfCollision();
+
+      if (hitWall || hitSelf) {
+        if (this.snake.hasShield) {
+          // Aegis shield absorbs collision and protects player!
+          this.snake.setShield(false);
+          this.activePowerup = null;
+          this.audio.playShieldAbsorb();
+          this.sceneManager.triggerShake(0.65);
+          const headPos = this.snake.getHeadWorldPosition();
+          this.particles.spawnBurst(headPos, 0x00ff88, 55, 1.8);
+
+          // If wall collision, steer away to safe cell
+          if (hitWall) {
+            const head = this.snake.body[0];
+            const safeDirs = [DIRECTIONS.UP, DIRECTIONS.DOWN, DIRECTIONS.LEFT, DIRECTIONS.RIGHT].filter(d => {
+              const nx = head.x + d.x;
+              const nz = head.z + d.z;
+              return nx >= 0 && nx < GRID_SIZE && nz >= 0 && nz < GRID_SIZE && !this.snake.isOccupied(nx, nz);
+            });
+            if (safeDirs.length > 0) {
+              this.snake.direction = safeDirs[0];
+              this.input.currentDirection = safeDirs[0];
+            }
+          }
+          this.ui.updateHUD(this.score, this.activePowerup);
+          return;
+        }
         this.triggerGameOver();
         return;
       }
@@ -188,7 +214,7 @@ export class Game {
 
   handleFoodCollected() {
     const foodType = this.food.currentType;
-    const activeMultiplier = (this.activePowerup && this.activePowerup.type === 'HYPER') ? 2 : 1;
+    const activeMultiplier = (this.activePowerup && this.activePowerup.type === 'SPEED') ? 2 : 1;
 
     // Score & Combo progression
     const result = this.score.addFood(foodType, activeMultiplier);
@@ -201,24 +227,69 @@ export class Game {
     this.sceneManager.triggerShake(0.25); // Punchy satisfying camera impact
     this.snake.triggerSurge();           // Electric light wave rushes through snake
 
+    // Shockwave across living floor and brief brightening of arena
+    this.arena.triggerShockwave(foodPos, foodType.color);
+    this.lighting.flash(foodType.color, 0.35);
+
     // High combo celebration fireworks!
     if (result.combo >= 3) {
       this.particles.spawnFireworks(foodPos);
     }
 
-    // Dynamic environment scaling as score climbs
-    this.arena.setIntensity(this.score.level);
+    // Dynamic environment scaling as score climbs & overdrive mode
+    const isOverdrive = (this.score.score >= 250) || (this.activePowerup && this.activePowerup.type === 'RAINBOW');
+    this.arena.setIntensity(this.score.level, isOverdrive);
     this.lighting.setIntensity(this.score.level);
 
     if (foodType.type === 'NORMAL') {
       this.audio.playEat(result.combo);
-    } else {
-      this.audio.playPowerup();
+    } else if (foodType.type === 'GOLDEN') {
+      this.audio.playGoldenOrb();
+      this.particles.spawnBurst(foodPos, 0xffea00, 60, 1.8);
+    } else if (foodType.type === 'RAINBOW') {
+      this.audio.playRainbowOrb();
+      this.particles.spawnBurst(foodPos, 0xff00ff, 80, 2.2);
+      this.sceneManager.triggerShake(0.5);
       this.activePowerup = {
-        type: foodType.type,
-        name: foodType.name,
+        type: 'RAINBOW',
+        name: 'Rainbow Overdrive',
         timer: foodType.duration
       };
+    } else if (foodType.type === 'SHIELD') {
+      this.audio.playPowerup();
+      this.snake.setShield(true);
+      this.activePowerup = {
+        type: 'SHIELD',
+        name: 'Aegis Shield',
+        timer: foodType.duration
+      };
+    } else if (foodType.type === 'SPEED') {
+      this.audio.playPowerup();
+      this.snake.setTurbo(true);
+      this.activePowerup = {
+        type: 'SPEED',
+        name: 'Turbo Boost',
+        timer: foodType.duration
+      };
+    } else if (foodType.type === 'TIME') {
+      this.audio.playPowerup();
+      this.activePowerup = {
+        type: 'TIME',
+        name: 'Chrono Freeze',
+        timer: foodType.duration
+      };
+    } else if (foodType.type === 'MAGNET') {
+      this.audio.playPowerup();
+      this.activePowerup = {
+        type: 'MAGNET',
+        name: 'Gravity Well',
+        timer: foodType.duration
+      };
+    }
+
+    // Check for milestone "WOW Moment" (25, 50, 100, 250)
+    if (result.triggeredMilestone) {
+      this.triggerMilestoneMoment(result.triggeredMilestone);
     }
 
     // Snake Growth
@@ -232,6 +303,18 @@ export class Game {
     // Spawn next food
     this.food.spawn(this.snake);
     this.ui.updateHUD(this.score, this.activePowerup);
+  }
+
+  triggerMilestoneMoment(milestone) {
+    this.audio.playMilestone();
+    this.sceneManager.triggerPunch();
+    this.sceneManager.triggerShake(0.65);
+    this.lighting.flash(milestone.accent, 0.75);
+    const headWorld = this.snake.getHeadWorldPosition();
+    this.arena.triggerShockwave(headWorld, milestone.accent);
+    this.particles.spawnFireworks(headWorld);
+    this.particles.spawnBurst(headWorld, milestone.accent, 80, 2.2);
+    this.ui.showMilestoneBanner(milestone);
   }
 
   triggerGameOver() {
@@ -330,6 +413,8 @@ export class Game {
     if (this.activePowerup) {
       this.activePowerup.timer -= deltaTime;
       if (this.activePowerup.timer <= 0) {
+        if (this.activePowerup.type === 'SHIELD') this.snake.setShield(false);
+        if (this.activePowerup.type === 'SPEED') this.snake.setTurbo(false);
         this.activePowerup = null;
       }
       this.ui.updateHUD(this.score, this.activePowerup);
@@ -358,7 +443,10 @@ export class Game {
 
     // 4. Update 3D visual components
     this.snake.update(alpha, this.gameTime, deltaTime);
-    this.food.update(this.gameTime, deltaTime);
+    const magnetTarget = (this.activePowerup && this.activePowerup.type === 'MAGNET')
+      ? this.snake.getHeadWorldPosition()
+      : null;
+    this.food.update(this.gameTime, deltaTime, magnetTarget);
     this.particles.update(deltaTime);
     this.arena.update(this.gameTime, deltaTime);
     this.lighting.update(this.gameTime, deltaTime);

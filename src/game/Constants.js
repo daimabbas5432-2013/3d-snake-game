@@ -1,5 +1,6 @@
 /**
  * Neon Snake 3D - Game Constants & Configuration
+ * Living Rainbow & Progression Upgrade
  */
 
 export const GRID_SIZE = 20; // 20x20 grid cells
@@ -21,44 +22,92 @@ export const DIRECTIONS = {
 };
 
 export const SPEED_CONFIG = {
-  INITIAL_TICK_RATE: 0.165, // Seconds per tick (~6.0 steps/sec)
-  MIN_TICK_RATE: 0.065,     // Fastest speed cap (~15 steps/sec)
-  SPEED_STEP: 0.007,        // Speed increment per level
-  FOOD_PER_LEVEL: 3         // Foods collected per speed level up
+  INITIAL_TICK_RATE: 0.160,
+  MIN_TICK_RATE: 0.065,
+  SPEED_STEP: 0.006,
+  FOOD_PER_LEVEL: 3
 };
 
 export const FOOD_TYPES = {
   NORMAL: {
     type: 'NORMAL',
-    name: 'Plasma Crystal',
+    name: 'Plasma Orb',
     points: 10,
-    color: 0xff007f,      // Hot Pink / Neon Magenta (stunning contrast on cyan/blue floor)
-    glowColor: 0x00f0ff,  // Radiant Cyan secondary
-    ringColor: 0xff1493,
-    probability: 0.70,
+    color: 0x00f0ff,
+    secondaryColor: 0x0088ff,
+    ringColor: 0x00ffff,
+    probability: 0.50,
     duration: 0
   },
-  HYPER: {
-    type: 'HYPER',
-    name: 'Overcharge Core',
+  GOLDEN: {
+    type: 'GOLDEN',
+    name: 'Solar Gold Core',
     points: 50,
-    color: 0xffea00,      // Electric Solar Yellow
-    glowColor: 0xff5500,  // Radiant Blaze Orange
+    color: 0xffea00,
+    secondaryColor: 0xff7700,
     ringColor: 0xffd700,
-    probability: 0.18,
-    duration: 8 // seconds
+    probability: 0.15,
+    duration: 0
   },
-  CHRONO: {
-    type: 'CHRONO',
-    name: 'Chrono Warp Crystal',
-    points: 30,
-    color: 0xaa00ff,      // Neon Electric Purple
-    glowColor: 0x00f0ff,  // Vibrant Cyan
-    ringColor: 0xdf00ff,
-    probability: 0.12,
-    duration: 6 // seconds
+  RAINBOW: {
+    type: 'RAINBOW',
+    name: 'Rainbow Prism',
+    points: 100,
+    color: 0xff00cc,
+    secondaryColor: 0x00f0ff,
+    ringColor: 0xffea00,
+    probability: 0.08,
+    duration: 8 // Activates Rainbow Overdrive mode
+  },
+  SPEED: {
+    type: 'SPEED',
+    name: 'Turbo Surge',
+    points: 20,
+    color: 0xff9900,
+    secondaryColor: 0xff3300,
+    ringColor: 0xffcc00,
+    probability: 0.09,
+    duration: 6
+  },
+  TIME: {
+    type: 'TIME',
+    name: 'Chrono Freeze',
+    points: 20,
+    color: 0x00e5ff,
+    secondaryColor: 0x7b1fa2,
+    ringColor: 0x99ffff,
+    probability: 0.09,
+    duration: 6
+  },
+  MAGNET: {
+    type: 'MAGNET',
+    name: 'Gravity Well',
+    points: 25,
+    color: 0xcc00ff,
+    secondaryColor: 0xff00aa,
+    ringColor: 0xff66ff,
+    probability: 0.05,
+    duration: 7
+  },
+  SHIELD: {
+    type: 'SHIELD',
+    name: 'Aegis Shield',
+    points: 25,
+    color: 0x00ff88,
+    secondaryColor: 0x00aaff,
+    ringColor: 0x88ffcc,
+    probability: 0.04,
+    duration: 15 // Or until 1 collision is absorbed
   }
 };
+
+export const PHASES = [
+  { threshold: 0, name: 'NEON CITY', subtitle: 'GRID ONLINE', color: '#00f0ff', accent: 0x00f0ff },
+  { threshold: 25, name: 'SYNTHWAVE', subtitle: 'SPECTRUM SHIFT', color: '#ff00aa', accent: 0xff00aa },
+  { threshold: 50, name: 'RAINBOW CORE', subtitle: 'PRISM PULSE', color: '#ffea00', accent: 0xffea00 },
+  { threshold: 100, name: 'VOLTAGE', subtitle: 'HYPER-CHARGED', color: '#00e5ff', accent: 0x00e5ff },
+  { threshold: 250, name: 'OVERDRIVE', subtitle: 'MAXIMUM VELOCITY', color: '#ff0055', accent: 0xff0055 }
+];
 
 export const PALETTE = {
   CYAN: 0x00f0ff,
@@ -69,12 +118,13 @@ export const PALETTE = {
   DEEP_PURPLE: 0x240046,
   NEON_YELLOW: 0xffea00,
   NEON_ORANGE: 0xff6600,
+  NEON_GREEN: 0x00ff88,
   RED_ALERT: 0xff1744,
-  DARK_SPACE: 0x03030a,
+  DARK_SPACE: 0x020308,
   GRID_GLOW: 0x00f0ff
 };
 
 export const COMBO_CONFIG = {
-  WINDOW_SECONDS: 3.5,
+  WINDOW_SECONDS: 3.8,
   MAX_MULTIPLIER: 5
 };

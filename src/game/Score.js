@@ -1,8 +1,9 @@
 /**
  * Score & Progression Manager
+ * Milestone triggers, level phases, combo multipliers, and localStorage high score persistence
  */
 
-import { COMBO_CONFIG, SPEED_CONFIG } from './Constants.js';
+import { COMBO_CONFIG, SPEED_CONFIG, PHASES } from './Constants.js';
 
 export class Score {
   constructor() {
@@ -11,10 +12,12 @@ export class Score {
     this.length = 3;
     this.foodsCollected = 0;
     this.level = 1;
+    this.currentPhaseIndex = 0;
     this.combo = 1;
     this.comboTimer = 0;
     this.maxComboAchieved = 1;
     this.isNewHighScore = false;
+    this.unlockedMilestones = new Set();
   }
 
   loadHighScore() {
@@ -31,10 +34,12 @@ export class Score {
     this.length = 3;
     this.foodsCollected = 0;
     this.level = 1;
+    this.currentPhaseIndex = 0;
     this.combo = 1;
     this.comboTimer = 0;
     this.maxComboAchieved = 1;
     this.isNewHighScore = false;
+    this.unlockedMilestones = new Set();
   }
 
   update(deltaTime) {
@@ -45,6 +50,10 @@ export class Score {
         this.comboTimer = 0;
       }
     }
+  }
+
+  getCurrentPhase() {
+    return PHASES[this.currentPhaseIndex] || PHASES[0];
   }
 
   addFood(foodConfig, activeMultiplier = 1) {
@@ -62,9 +71,26 @@ export class Score {
       this.maxComboAchieved = this.combo;
     }
 
-    // Points calculation: base points * combo * powerup multiplier
+    // Points calculation
     const earnedPoints = foodConfig.points * this.combo * activeMultiplier;
     this.score += earnedPoints;
+
+    // Check for newly crossed milestones (25, 50, 100, 250)
+    let triggeredMilestone = null;
+    const milestonePoints = [250, 100, 50, 25];
+
+    for (const m of milestonePoints) {
+      if (this.score >= m && !this.unlockedMilestones.has(m)) {
+        this.unlockedMilestones.add(m);
+        // Find phase
+        const phaseIdx = PHASES.findIndex(p => p.threshold === m);
+        if (phaseIdx !== -1) {
+          this.currentPhaseIndex = Math.max(this.currentPhaseIndex, phaseIdx);
+          triggeredMilestone = PHASES[phaseIdx];
+        }
+        break;
+      }
+    }
 
     // High score check
     if (this.score > this.highScore) {
@@ -79,7 +105,8 @@ export class Score {
     return {
       earnedPoints,
       combo: this.combo,
-      isNewHighScore: this.isNewHighScore
+      isNewHighScore: this.isNewHighScore,
+      triggeredMilestone
     };
   }
 

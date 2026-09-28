@@ -104,7 +104,51 @@ export async function runE2ETests() {
   }
   console.log('TEST_PASS: Resumed back to PLAYING');
 
-  // 8. Test Game Over
+  // 8. Test Shield Collision Absorption Mechanics
+  console.log('ACTION: Testing Shield collision absorption');
+  game.snake.setShield(true);
+  if (!game.snake.hasShield) {
+    console.error('TEST_FAIL: Shield could not be set on snake');
+    return false;
+  }
+  // Simulate collision while shield is active
+  game.snake.body[0].x = -1; // Force wall collision position
+  game.gameTick();
+  if (game.state !== GAME_STATES.PLAYING) {
+    console.error('TEST_FAIL: Game Over triggered despite active Aegis Shield!');
+    return false;
+  }
+  if (game.snake.hasShield) {
+    console.error('TEST_FAIL: Shield was not consumed after absorbing collision');
+    return false;
+  }
+  console.log('TEST_PASS: Shield successfully absorbed collision and kept snake alive!');
+
+  // 9. Test Power-up & Collectible Types
+  console.log('ACTION: Testing power-up collectibles');
+  game.food.currentType = { type: 'GOLDEN', name: 'Solar Gold Core', points: 50, color: 0xffea00, secondaryColor: 0xff7700, ringColor: 0xffd700, probability: 0.15, duration: 0 };
+  game.handleFoodCollected();
+  console.log('TEST_PASS: Golden Orb collected');
+
+  game.food.currentType = { type: 'SPEED', name: 'Turbo Surge', points: 20, color: 0xff9900, secondaryColor: 0xff3300, ringColor: 0xffcc00, probability: 0.09, duration: 6 };
+  game.handleFoodCollected();
+  if (!game.activePowerup || game.activePowerup.type !== 'SPEED') {
+    console.error('TEST_FAIL: Turbo powerup not active');
+    return false;
+  }
+  console.log('TEST_PASS: Turbo Surge powerup activated');
+
+  // 10. Test Milestone WOW Moment Trigger
+  console.log('ACTION: Testing milestone moment trigger');
+  game.triggerMilestoneMoment({ name: 'OVERDRIVE', subtitle: 'MAXIMUM VELOCITY', color: '#ff0055', accent: 0xff0055 });
+  const milestoneBanner = document.getElementById('milestone-banner');
+  if (!milestoneBanner || !milestoneBanner.classList.contains('active')) {
+    console.error('TEST_FAIL: Milestone banner not displayed');
+    return false;
+  }
+  console.log('TEST_PASS: Milestone WOW Moment banner active');
+
+  // 11. Test Game Over
   console.log('ACTION: Triggering Game Over crash');
   game.triggerGameOver();
   await wait(600);
@@ -120,7 +164,7 @@ export async function runE2ETests() {
   }
   console.log('TEST_PASS: Game Over screen active with final statistics');
 
-  // 9. Test Replay Button
+  // 12. Test Replay Button
   const btnReplay = document.getElementById('btn-replay');
   console.log('ACTION: Clicking RETRY MISSION button');
   btnReplay.click();

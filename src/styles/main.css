@@ -43,7 +43,7 @@ html, body {
   z-index: 1;
 }
 
-/* Scanline and Vignette Sci-Fi Overlay */
+/* Clean Cinematic Vignette (Zero Scanlines or Stripes for Crystal Clear Visibility) */
 .crt-overlay {
   position: absolute;
   top: 0;
@@ -52,9 +52,7 @@ html, body {
   height: 100%;
   z-index: 2;
   pointer-events: none;
-  background: radial-gradient(circle at center, transparent 55%, rgba(2, 4, 10, 0.8) 100%),
-              linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-  background-size: 100% 100%, 100% 4px;
+  background: radial-gradient(circle at center, transparent 72%, rgba(2, 4, 10, 0.45) 100%);
 }
 
 /* WebGL Not Supported Screen */
@@ -235,6 +233,26 @@ html, body {
   50% { opacity: 0.4; transform: scale(0.85); }
 }
 
+.hud-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-phase-badge {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--neon-cyan);
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
 /* HUD Action Controls */
 .hud-actions {
   display: flex;
@@ -329,16 +347,96 @@ html, body {
   transform: translateX(-50%) translateY(0);
 }
 
-#powerup-banner.hyper {
+#powerup-banner.hyper,
+#powerup-banner.speed {
   border-color: var(--neon-gold);
   color: var(--neon-gold);
   box-shadow: 0 0 18px var(--neon-gold-glow);
 }
 
-#powerup-banner.chrono {
-  border-color: var(--neon-purple);
-  color: #d880ff;
-  box-shadow: 0 0 18px var(--neon-purple-glow);
+#powerup-banner.chrono,
+#powerup-banner.time {
+  border-color: #00e5ff;
+  color: #99ffff;
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.4);
+}
+
+#powerup-banner.magnet {
+  border-color: #ff00aa;
+  color: #ff66ff;
+  box-shadow: 0 0 18px rgba(255, 0, 170, 0.4);
+}
+
+#powerup-banner.shield {
+  border-color: #00ff88;
+  color: #88ffcc;
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.4);
+}
+
+#powerup-banner.rainbow {
+  border-color: #ff00cc;
+  background: linear-gradient(135deg, rgba(255, 0, 128, 0.25), rgba(0, 240, 255, 0.25));
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(255, 0, 204, 0.6);
+  animation: rainbow-border 2s linear infinite;
+}
+
+@keyframes rainbow-border {
+  0% { border-color: #00f0ff; }
+  33% { border-color: #ff00aa; }
+  66% { border-color: #ffea00; }
+  100% { border-color: #00f0ff; }
+}
+
+/* Milestone "WOW Moment" Fullscreen Overlay */
+.milestone-overlay {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.milestone-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1.0);
+}
+
+.milestone-card {
+  padding: 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-radius: 16px;
+  background: rgba(4, 7, 20, 0.88);
+  border: 2px solid var(--neon-cyan);
+  box-shadow: 0 0 45px rgba(0, 240, 255, 0.6), inset 0 0 20px rgba(0, 240, 255, 0.25);
+  text-align: center;
+}
+
+.milestone-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  background: linear-gradient(135deg, #ffffff, var(--neon-cyan), var(--neon-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.8));
+}
+
+.milestone-subtitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--neon-gold);
 }
 
 /* Floating 3D Popups in HUD */

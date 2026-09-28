@@ -1,6 +1,6 @@
 /**
  * Procedural Web Audio API Sound Synthesizer
- * Zero external audio files required, 100% resilient and instant loading.
+ * 100% resilient, zero audio files required, instant loading
  */
 
 export class AudioManager {
@@ -57,9 +57,6 @@ export class AudioManager {
     return this.isMuted;
   }
 
-  /**
-   * Button hover sound
-   */
   playHover() {
     try {
       this.ensureContext();
@@ -83,9 +80,6 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * UI Click / Confirmation sound
-   */
   playClick() {
     try {
       this.ensureContext();
@@ -119,9 +113,6 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * Direction change / turn sound
-   */
   playTurn() {
     try {
       this.ensureContext();
@@ -132,8 +123,8 @@ export class AudioManager {
 
       osc.type = 'sine';
       const now = this.ctx.currentTime;
-      osc.frequency.setValueAtTime(260, now);
-      osc.frequency.exponentialRampToValueAtTime(340, now + 0.035);
+      osc.frequency.setValueAtTime(280, now);
+      osc.frequency.exponentialRampToValueAtTime(360, now + 0.035);
 
       gain.gain.setValueAtTime(0.04, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
@@ -146,9 +137,6 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * Energy orb collection sound (pitch ascends with combo)
-   */
   playEat(combo = 1) {
     try {
       this.ensureContext();
@@ -156,9 +144,8 @@ export class AudioManager {
 
       const now = this.ctx.currentTime;
       const semitone = this.scale[Math.min(combo - 1, this.scale.length - 1)];
-      const baseFreq = 440 * Math.pow(2, semitone / 12);
+      const baseFreq = 480 * Math.pow(2, semitone / 12);
 
-      // Primary chime
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
@@ -166,17 +153,16 @@ export class AudioManager {
       osc.frequency.setValueAtTime(baseFreq, now);
       osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.12);
 
-      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.setValueAtTime(0.26, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
 
-      // Harmonic shimmer overtone
       const subOsc = this.ctx.createOscillator();
       const subGain = this.ctx.createGain();
       subOsc.type = 'triangle';
       subOsc.frequency.setValueAtTime(baseFreq * 2.01, now);
       subOsc.frequency.exponentialRampToValueAtTime(baseFreq * 3.0, now + 0.18);
 
-      subGain.gain.setValueAtTime(0.12, now);
+      subGain.gain.setValueAtTime(0.14, now);
       subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
 
       osc.connect(gain);
@@ -192,16 +178,66 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * Special Powerup collect sound
-   */
+  playGoldenOrb() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+
+      const now = this.ctx.currentTime;
+      const freqs = [659.25, 830.61, 987.77, 1318.5]; // E major bright shimmer
+
+      freqs.forEach((f, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, now + idx * 0.035);
+        osc.frequency.exponentialRampToValueAtTime(f * 1.3, now + idx * 0.035 + 0.22);
+
+        gain.gain.setValueAtTime(0.18, now + idx * 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.035 + 0.32);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(now + idx * 0.035);
+        osc.stop(now + idx * 0.035 + 0.35);
+      });
+    } catch (e) {}
+  }
+
+  playRainbowOrb() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+
+      const now = this.ctx.currentTime;
+      const spectrum = [440, 554.37, 659.25, 830.61, 880, 1108.73, 1318.5];
+
+      spectrum.forEach((f, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(f, now + idx * 0.03);
+
+        gain.gain.setValueAtTime(0.15, now + idx * 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.28);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(now + idx * 0.03);
+        osc.stop(now + idx * 0.03 + 0.30);
+      });
+    } catch (e) {}
+  }
+
   playPowerup() {
     try {
       this.ensureContext();
       if (!this.ctx || this.isMuted) return;
 
       const now = this.ctx.currentTime;
-      const chord = [523.25, 659.25, 783.99, 1046.5]; // C major sci-fi arpeggio
+      const chord = [523.25, 659.25, 783.99, 1046.5];
 
       chord.forEach((freq, idx) => {
         const osc = this.ctx.createOscillator();
@@ -209,12 +245,11 @@ export class AudioManager {
 
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(freq, now + idx * 0.04);
-        osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + idx * 0.04 + 0.18);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.3, now + idx * 0.04 + 0.18);
 
         gain.gain.setValueAtTime(0.12, now + idx * 0.04);
         gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.35);
 
-        // Lowpass filter for warm cyber glow
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(2400, now);
@@ -229,9 +264,56 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * Snake Crash impact sound (deep noise explosion + sub-bass)
-   */
+  playShieldAbsorb() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.35);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch (e) {}
+  }
+
+  playMilestone() {
+    try {
+      this.ensureContext();
+      if (!this.ctx || this.isMuted) return;
+
+      const now = this.ctx.currentTime;
+      const fanfare = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+
+      fanfare.forEach((f, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(f, now + idx * 0.07);
+
+        gain.gain.setValueAtTime(0.22, now + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.45);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(now + idx * 0.07);
+        osc.stop(now + idx * 0.07 + 0.48);
+      });
+    } catch (e) {}
+  }
+
   playCrash() {
     try {
       this.ensureContext();
@@ -246,7 +328,7 @@ export class AudioManager {
       subOsc.frequency.setValueAtTime(140, now);
       subOsc.frequency.exponentialRampToValueAtTime(28, now + 0.45);
 
-      subGain.gain.setValueAtTime(0.4, now);
+      subGain.gain.setValueAtTime(0.45, now);
       subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
       subOsc.connect(subGain);
@@ -255,7 +337,7 @@ export class AudioManager {
       subOsc.start(now);
       subOsc.stop(now + 0.5);
 
-      // Noise impact buffer
+      // Noise buffer
       const bufferSize = this.ctx.sampleRate * 0.4;
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -284,16 +366,13 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * Game Over descending cyber defeat
-   */
   playGameOver() {
     try {
       this.ensureContext();
       if (!this.ctx || this.isMuted) return;
 
       const now = this.ctx.currentTime;
-      const notes = [330, 311, 293, 261]; // Descending chromatic motif
+      const notes = [330, 311, 293, 261];
 
       notes.forEach((freq, idx) => {
         const osc = this.ctx.createOscillator();
@@ -319,9 +398,6 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * New High Score Fanfare
-   */
   playHighScore() {
     try {
       this.ensureContext();
@@ -332,7 +408,7 @@ export class AudioManager {
         { f: 523.25, d: 0.10 },
         { f: 659.25, d: 0.10 },
         { f: 783.99, d: 0.12 },
-        { f: 1046.5, d: 0.35 }
+        { f: 1046.5, d: 0.38 }
       ];
 
       let t = now;
@@ -343,7 +419,7 @@ export class AudioManager {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(n.f, t);
 
-        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.setValueAtTime(0.24, t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + n.d);
 
         osc.connect(gain);
@@ -357,9 +433,6 @@ export class AudioManager {
     } catch (e) {}
   }
 
-  /**
-   * Subtle ambient sci-fi hum in the background
-   */
   startAmbientHum() {
     try {
       if (!this.ctx || this.ambientOsc) return;
@@ -368,7 +441,7 @@ export class AudioManager {
       this.ambientGain = this.ctx.createGain();
 
       this.ambientOsc.type = 'sine';
-      this.ambientOsc.frequency.setValueAtTime(55, this.ctx.currentTime); // 55Hz low A hum
+      this.ambientOsc.frequency.setValueAtTime(55, this.ctx.currentTime);
 
       this.ambientGain.gain.setValueAtTime(0.02, this.ctx.currentTime);
 

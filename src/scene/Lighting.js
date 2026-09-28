@@ -68,7 +68,20 @@ export class Lighting {
     this.intensityMultiplier = 1.0 + (level - 1) * 0.08;
   }
 
+  flash(colorHex = 0x00f0ff, duration = 0.35) {
+    this.flashColor = colorHex;
+    this.flashTimer = duration;
+    this.flashDuration = duration;
+  }
+
   update(time, deltaTime) {
+    // Flash countdown
+    let flashBonus = 0;
+    if (this.flashTimer > 0) {
+      this.flashTimer -= deltaTime;
+      flashBonus = Math.max(0, this.flashTimer / (this.flashDuration || 0.35)) * 1.8;
+    }
+
     // 1. Animate corner lights with breathing neon pulse
     this.cornerLights.forEach((item, idx) => {
       const pulse = Math.sin(time * 3.5 + idx * 1.5) * 0.35 + 1.0;
@@ -78,8 +91,12 @@ export class Lighting {
         item.light.color.setHex(PALETTE.RED_ALERT);
         item.light.intensity = redPulse + 1.2;
       } else {
-        item.light.color.setHex(item.baseColor);
-        item.light.intensity = 3.0 * pulse * this.intensityMultiplier;
+        if (flashBonus > 0 && this.flashColor) {
+          item.light.color.setHex(this.flashColor);
+        } else {
+          item.light.color.setHex(item.baseColor);
+        }
+        item.light.intensity = (3.0 * pulse * this.intensityMultiplier) + flashBonus * 3.0;
       }
     });
 
@@ -95,8 +112,10 @@ export class Lighting {
 
     if (this.isAlert) {
       this.ambientLight.color.setHex(0x38050a);
+      this.ambientLight.intensity = 1.4;
     } else {
       this.ambientLight.color.setHex(0x1a0f35);
+      this.ambientLight.intensity = 1.4 + flashBonus * 1.2;
     }
   }
 }
